@@ -133,7 +133,9 @@ phase('Review');
 const review = await agent(
   `Adversarially review the diff for phase ${PHASE} of PoB2 Remastered (git diff against the phase's base).
 Check: correctness vs ./DESIGN.md and PHASES[${PHASE}].doneCriteria, NO-FALLBACK (no fake passes/stubs masquerading as done),
-no vendor/ edits, test quality. Only report REAL issues. If you find blocking issues, fix them via TDD and commit. Then summarize.`,
+no vendor/ edits, test quality. Only report REAL issues. If you find blocking issues, fix them via TDD and commit, then re-run the gate.
+Set blocking=true ONLY if a blocking issue REMAINS unfixed (doneCriteria still not met after your fixes). If you found blocking
+issues but FIXED them and re-verified the gate green, set blocking=false and describe what you found+fixed in summary.`,
   {
     label: `review:p${PHASE}`,
     phase: 'Review',

@@ -12,8 +12,8 @@
 - Phase 0: ✓ done — squash-merged to `main` (97c5b13), pushed
 - Phase 1: ✓ done — squash-merged to `main` (8fb171e), pushed
 - Phase 2: ✓ done — squash-merged to `main` (c2e43b9), pushed
-- Phase 3: ✓ done — gate set green (`run-gate 3` exit 0); visual `/items` verified; on `feat/phase-3-items`
-- Current phase: **4** (Skills/Config/Calcs) — pending
+- Phase 3: ✓ done — squash-merged to `main` (6800500), pushed; **core-bridge CARRYOVER resolved** (app runs core over Tauri IPC); equip-delta fake-feature caught+fixed by review
+- Current phase: **4** (Skills/Config/Calcs) — in progress on `feat/phase-4-skills-config-calcs`
 - Env: Rust toolchain provisioned (cargo 1.96, user-space `~/.cargo`, reachable in login shell);
   `webkit2gtk-4.1` dev libs already present → Tauri buildable; Playwright chromium present → visual gates live
 - TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in
@@ -23,16 +23,16 @@
 
 ## Phase ledger
 
-| Phase | Status  | Gate evidence                                                             | 🚩Flags | Blockers |
-| ----- | ------- | ------------------------------------------------------------------------- | ------- | -------- |
-| 0     | done    | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
-| 1     | done    | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
-| 2     | done    | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
-| 3     | done    | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
-| 4     | pending |                                                                           |         |          |
-| 5     | pending |                                                                           |         |          |
-| 6     | pending |                                                                           |         |          |
-| 7     | pending |                                                                           |         |          |
+| Phase | Status      | Gate evidence                                                             | 🚩Flags | Blockers |
+| ----- | ----------- | ------------------------------------------------------------------------- | ------- | -------- |
+| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
+| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
+| 2     | done        | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
+| 3     | done        | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
+| 4     | in progress |                                                                           |         |          |
+| 5     | pending     |                                                                           |         |          |
+| 6     | pending     |                                                                           |         |          |
+| 7     | pending     |                                                                           |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -213,6 +213,13 @@ stages it in the Items inspector, and switches to the Items tab (`apps/desktop/s
 ## 🚩 Flag log
 
 _(human-gate decisions made autonomously — review later)_
+
+- **CARRYOVER (Import/Export) — WebView share-code codec** (Phase 3, `p3-core-bridge`) — The desktop
+  WebView `loadShareCode`/`saveShareCode` path needs a browser-safe deflate (Web `CompressionStream`
+  or `fflate`); `node:zlib` can't run in the WebView and the runner exposes no encode/decode method.
+  The 4 live core methods (build.load/save XML, calc.run, items.compare) work over IPC and don't use
+  it — only share-code import/export does. Wire when the desktop Import/Export flow lands. Mirrors
+  the `p1/encode-byte-identity` flag.
 
 - **p3-client-items/runner-gaps** (Phase 3, `p3-client-items`) — Added `getEquipped`/`createCustom`/
   `equipDelta` to `CoreClient` (`packages/core-client/src/index.ts`), each validating
