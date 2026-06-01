@@ -28,6 +28,20 @@ See `DESIGN.md` §9 and §15 for the full rationale.
   (`DESIGN.md` §9.3). Users can disable external image loading.
 - **Attribution:** Surfaced in Settings → About → Data/Image sources.
 
+## 4. lua-utf8 (native runtime dependency)
+
+- **Source:** https://github.com/starwing/luautf8 (luarocks rock `luautf8`).
+- **Use:** Native (`.so`) C module the headless boot path requires —
+  `vendor/PathOfBuilding-PoE2/src/Modules/Common.lua` calls `require('lua-utf8')`.
+  The vendored `runtime/` ships only a Windows `lua-utf8.dll`, so on PUC Lua 5.1
+  it is provisioned per environment, never bundled as a binary blob.
+- **License:** MIT.
+- **Policy:** Provisioned via `luarocks install --local luautf8`; no `lua-utf8.so`
+  binary is committed to git. The boot-prerequisite probe
+  (`tools/dev-workflow/ensure-lua-deps.sh`) and `overlays/lua/README.md` →
+  "Boot prerequisites" document the install step. Third-party notice retained per
+  `DESIGN.md` §15.1.
+
 ## Release artifacts
 
 Releases must ship `LICENSE`, `NOTICE.md`, this file, and component version

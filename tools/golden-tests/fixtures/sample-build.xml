@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  sample-build.xml — deterministic minimal PoB2 build fixture (task p0-sample-build-fixture).
+
+  Purpose: a self-contained, stable sample build that the headless core can load
+  deterministically via the wired `loadBuildFromXML` global (HeadlessWrapper.lua),
+  exercising the real Build:LoadDB -> Build:Load -> {Skills,Items,Tree}:Load path.
+  It feeds the Phase 1 golden tests (DESIGN.md §7.4, §18), so it MUST stay stable.
+
+  Authored from the upstream save formats (Build:Save, SkillsTab:Save,
+  ItemsTab:Save, TreeTab:Save) and the CreateDisplayItemFromRaw / loadBuildFromXML
+  patterns, then verified to round-trip cleanly. Deliberately minimal:
+    - class: Ranger (Tree/Spec classId=2), level 1
+    - one item: a One Hand Mace base, equipped in Weapon 1, so the basic attack
+      below has a weapon to deal damage with (yields a deterministic non-zero DPS)
+    - one default skill: a single basic active skill gem (Mace Strike) in socket
+      group 1, referenced by gemId so its stat set resolves and the calc pipeline
+      produces a real TotalDPS / CombinedDPS (not 0)
+  No PlayerStat cache or Calcs UI-layout sections are stored — the core recomputes
+  all outputs on load, which is exactly what the golden tests assert against.
+
+  Stability note: the gem level is fixed (20) and the item is NORMAL rarity with no
+  rolled mods, so every load produces identical outputs across runs/machines.
+
+  NO vendor edits: this fixture lives entirely under tools/golden-tests/ (DESIGN.md §7.1).
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Ranger" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="2" masteryEffects="" secondaryAscendClassId="nil" nodes="50459" treeVersion="0_5" classId="2">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1">
+			<Skill enabled="true" includeInFullDPS="false" label="" mainActiveSkill="1" mainActiveSkillCalcs="1">
+				<Gem nameSpec="Mace Strike" gemId="Metadata/Items/Gems/SkillGemMaceStrike" skillId="MeleeMaceMacePlayer" level="20" quality="0" enabled="true" count="1"/>
+			</Skill>
+		</SkillSet>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<Item id="1">Rarity: NORMAL
+Runeforged Warpick
+--------
+Item Level: 1
+</Item>
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1">
+			<Slot itemPbURL="" name="Weapon 1" itemId="1"/>
+		</ItemSet>
+	</Items>
+</PathOfBuilding2>

@@ -1,0 +1,15 @@
+-- Busted config for PoB2 Remastered's own Lua specs (overlays/, tools/).
+-- The vendored upstream has its own spec suite under vendor/.../spec and is
+-- run by upstream's tooling; this config only covers our overlay specs.
+return {
+	_all = {
+		coverage = false,
+		verbose = true,
+	},
+	default = {
+		ROOT = { "spec" },
+		pattern = "_spec",
+		-- Resolve overlays.lua.* and tools.* modules from the repo root.
+		lpath = "./?.lua;./?/init.lua",
+	},
+}

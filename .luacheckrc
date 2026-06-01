@@ -8,5 +8,10 @@ exclude_files = {
 }
 
 -- PoB-style globals are introduced by the headless bootstrap; declare them here
--- as the overlay/core API surface stabilizes (see overlays/lua/).
-globals = {}
+-- as the overlay/core API surface stabilizes (see overlays/lua/). These are set on
+-- _G by the vendored HeadlessWrapper.lua once the core boots.
+globals = {
+  "build",
+  "newBuild",
+  "loadBuildFromXML",
+}
