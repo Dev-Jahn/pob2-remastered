@@ -28,11 +28,11 @@
 | 항목 | 정책 |
 |---|---|
 | **정지 조건 (유일)** | 자가수정 불가능한 **기술 블로커**(컴파일/테스트가 자가수정 루프 후에도 반복 실패). 이때만 사용자에게 증거와 함께 보고하고 멈춘다. |
-| **사람-게이트** | 멈추지 않고 **best-effort + 🚩FLAG**(PROGRESS.md 기록)로 처리하고 진행. |
+| **사람-게이트** | 멈추지 않고 **best-effort + 🚩FLAG**(PROGRESS.md 기록)로 처리하고 진행. **크게 문제 없는 수준의 판단은 사용자에게 묻지 않고 자율 결정**하고 FLAG로만 남긴다. |
 | 외부 네트워크 | 라이브 호출 금지 → **고정 fixture/캐시 HTML** 사용 (DESIGN §14.3) |
 | 자산/아이콘 | 번들 금지 → `do_not_bundle` 유지 · remote-ref 설계 (DESIGN §9, §15) |
 | 시크릿/서명 | 위조 금지 → config 훅 + env 참조 stub (DESIGN §13, §17.2) |
-| git 원격 | push/PR 금지 → **로컬 main에 squash-merge까지만** |
+| git 원격 | Phase별 squash-merge **후 `origin` push** (사용자 승인). PR 자동 생성은 Phase 7 sync-bot 한정 |
 | 공식 한국어 용어 | 자동 매핑 + confidence 표기, 최종 용어 확정은 FLAG (DESIGN §8.1) |
 
 근거: NO-FALLBACK 원칙은 "가짜로 통과시키지 말라"는 뜻이며, 위 정책은 **미완을 미완으로 명시**하므로 위반이 아니다. 동시에 DESIGN.md가 이미 정한 안전 기본값과 정확히 일치한다.
@@ -128,7 +128,7 @@ PhaseReport = {
 
 ### 6.1 메커니즘 (`visual-verify.mjs`)
 - **Tier 1 — 웹 UI 레이아웃 (주 경로, CI에서도 재현):** Playwright(chromium)로 React dev 서버를 띄워 핵심 화면을 **1366×768 / 4K**로 스크린샷. 네이티브 의존 없음.
-- **Tier 2 — 실제 Tauri 창:** `xvfb-run`(또는 WSLg 직접) + 빌드된 앱 실행 → `scrot`/imagemagick `import`로 창 캡처. (스크린샷 도구·cargo는 드라이버가 best-effort 설치; 불가 시 Tier 1로 검증 + 🚩FLAG)
+- **Tier 2 — 실제 Tauri 창 (항상 시도):** `xvfb-run`(또는 WSLg 직접) + 빌드된 앱 실행 → `scrot`/imagemagick `import`로 창 캡처. 스크린샷 도구·cargo는 드라이버가 best-effort 설치. **필수 게이트는 아니지만 매 UI Phase에서 반드시 캡처를 시도**하고, 성공 시 추가 증거로 첨부, 환경상 불가 시 🚩FLAG.
 - **분석:** 스크린샷을 vision으로 검증 — `gemini-vision` 스킬(정밀 레이아웃·텍스트) 우선, 가용 불가 시 직접 이미지 판독. DESIGN.md 목업 대비 **구체 단언** 검사:
   - 앱 셸: 좌측 네비(Overview/Skills/Items/…) + 중앙 워크스페이스 + 우측 Inspector 3분할 (DESIGN §10.2)
   - Overview: 공격/방어/리소스/경고 stat 카드 + 변경 delta 표시 (§10.3)
@@ -137,7 +137,7 @@ PhaseReport = {
   - 한국어 라벨 노출 + 영문 병기 (§8.1)
 
 ### 6.2 게이트 등급
-`visual` 게이트는 **required** (UI Phase 2~5). Tier 1이 통과해야 Phase 통과. Tier 2는 가능하면 추가 증거, 환경상 불가 시 FLAG로 강등(정지 아님).
+`visual` 게이트는 **required** (UI Phase 2~5). Tier 1이 통과해야 Phase 통과. Tier 2(실제 Tauri 창)는 **매 UI Phase에서 항상 캡처를 시도**하되 필수는 아님 — 성공 시 추가 증거, 불가 시 FLAG(정지 아님).
 
 ---
 
@@ -163,7 +163,7 @@ PhaseReport = {
 ## 8. 드라이버 상태 & git 전략
 
 - **상태 영속:** `tools/dev-workflow/PROGRESS.md` — Phase/작업 체크리스트, 🚩FLAG 목록, 블로커, 마지막 커밋. 매 Phase 후 갱신·커밋 → compaction/세션 교체 후에도 재개.
-- **git (CLAUDE.md 기본):** Phase별 `feat/phase-N-*` 브랜치 → 완료 시 `main`을 브랜치에 rebase → `main`에 **squash-merge**. **원격 push 없음**(외부 행동; 사용자가 직접/추후).
+- **git (CLAUDE.md 기본):** Phase별 `feat/phase-N-*` 브랜치 → 완료 시 `main`을 브랜치에 rebase → `main`에 **squash-merge** → **`origin`에 push**(사용자 승인). push 실패(인증/권한)는 하드 블로커가 아닌 🚩FLAG로 기록하고 로컬 진행 유지.
 - **페이싱:** 긴 구간은 `ScheduleWakeup`로 self-pace, 같은 드라이버 프롬프트로 재진입해 다음 Phase 진행.
 
 ---
