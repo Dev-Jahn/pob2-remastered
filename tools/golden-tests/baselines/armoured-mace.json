@@ -1,0 +1,24 @@
+{
+  "id": "armoured-mace",
+  "cases": ["single-skill", "item-set-swap"],
+  "intent": "Warrior with a Mace + Body Armour and TWO item sets (armour-only vs no-armour) — the second set is the swap target, so the saved active set is deterministic.",
+  "stats": {
+    "Life": 82,
+    "Mana": 50,
+    "EnergyShield": 60,
+    "Ward": 0,
+    "Spirit": 100,
+    "TotalDPS": 2.8933100625,
+    "CombinedDPS": 2.8933100625,
+    "FullDPS": 0,
+    "AverageDamage": 1.99538625,
+    "TotalDot": 0,
+    "Armour": 207,
+    "Evasion": 7,
+    "TotalEHP": 82.570959418249,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "spell-support-arc",
+  "cases": ["single-skill", "party-support"],
+  "intent": "Sorceress casting Arc supported by Elemental Focus — exercises the support-gem path.",
+  "stats": {
+    "Life": 65,
+    "Mana": 67,
+    "EnergyShield": 0,
+    "Ward": 0,
+    "Spirit": 100,
+    "TotalDPS": 125.84545454545,
+    "CombinedDPS": 125.84545454545,
+    "FullDPS": 0,
+    "AverageHit": 138.43,
+    "AverageDamage": 138.43,
+    "TotalDot": 0,
+    "Armour": 0,
+    "Evasion": 7,
+    "TotalEHP": 47.758203222843,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

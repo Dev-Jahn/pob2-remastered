@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  spell-support-arc.xml — golden fixture (DESIGN §7.4 cases: SINGLE SKILL, PARTY/SUPPORT).
+
+  Intent: a level-1 Sorceress casting Arc supported by an Elemental Focus support
+  gem in the SAME socket group. This exercises the support-gem linking path (the
+  "support" half of the §7.4 "party/support build" case): the support's stats must
+  fold into the active skill's output, so it diverges from the bare single-spell
+  fixture in a way only the support pipeline produces.
+
+  Provenance (humanGate=gamedata): authored from upstream save formats. NO live
+  scraping, NO bundled GGG assets. gamedata IDs used:
+    - class: Sorceress  (PoB2 spec classId/classInternalId = 7)
+    - item base: Attuned Wand  (Bases/wand.lua, type "Wand")
+    - active gem: Metadata/Items/Gems/SkillGemArc  (Arc) -> skill ArcPlayer
+    - support gem: Metadata/Items/Gems/SupportGemElementalFocus (Elemental Focus)
+                   -> skill SupportElementalFocusPlayer
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Sorceress" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="7" masteryEffects="" secondaryAscendClassId="nil" nodes="" treeVersion="0_5" classId="7">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1">
+			<Skill enabled="true" includeInFullDPS="false" label="" mainActiveSkill="1" mainActiveSkillCalcs="1">
+				<Gem nameSpec="Arc" gemId="Metadata/Items/Gems/SkillGemArc" skillId="ArcPlayer" level="20" quality="0" enabled="true" count="1"/>
+				<Gem nameSpec="Elemental Focus" gemId="Metadata/Items/Gems/SupportGemElementalFocus" skillId="SupportElementalFocusPlayer" level="20" quality="0" enabled="true" count="1"/>
+			</Skill>
+		</SkillSet>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<Item id="1">Rarity: NORMAL
+Attuned Wand
+--------
+Item Level: 1
+</Item>
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1">
+			<Slot itemPbURL="" name="Weapon 1" itemId="1"/>
+		</ItemSet>
+	</Items>
+</PathOfBuilding2>

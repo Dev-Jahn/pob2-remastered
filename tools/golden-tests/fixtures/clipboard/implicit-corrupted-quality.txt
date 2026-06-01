@@ -1,0 +1,22 @@
+Item Class: Gloves
+Rarity: Rare
+Gale Grip
+Riveted Mitts
+--------
+Quality: +20% (augmented)
+Armour: 45
+--------
+Requirements:
+Level: 16
+Str: 25
+--------
+Sockets: S S
+--------
+Item Level: 50
+--------
++12 to Strength (implicit)
+--------
++45 to maximum Life
++24% to Lightning Resistance
+--------
+Corrupted

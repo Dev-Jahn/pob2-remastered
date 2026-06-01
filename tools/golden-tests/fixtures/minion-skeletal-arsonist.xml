@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  minion-skeletal-arsonist.xml — golden fixture (DESIGN §7.4 case: MINION).
+
+  Intent: a level-1 Witch summoning Skeletal Arsonists. This drives the minion calc
+  path (minion life/damage feed the combined output rather than the player's own
+  weapon), the distinguishing branch of the §7.4 minion case.
+
+  Provenance (humanGate=gamedata): authored from upstream save formats. NO live
+  scraping, NO bundled GGG assets. gamedata IDs used:
+    - class: Witch  (PoB2 spec classId/classInternalId = 1)
+    - gem: Metadata/Items/Gems/SkillGemSkeletalArsonist  (Skeletal Arsonist)
+           -> skill SummonSkeletalArsonistsPlayer
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Witch" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="1" masteryEffects="" secondaryAscendClassId="nil" nodes="" treeVersion="0_5" classId="1">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1">
+			<Skill enabled="true" includeInFullDPS="false" label="" mainActiveSkill="1" mainActiveSkillCalcs="1">
+				<Gem nameSpec="Skeletal Arsonist" gemId="Metadata/Items/Gems/SkillGemSkeletalArsonist" skillId="SummonSkeletalArsonistsPlayer" level="20" quality="0" enabled="true" count="1"/>
+			</Skill>
+		</SkillSet>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1"/>
+	</Items>
+</PathOfBuilding2>

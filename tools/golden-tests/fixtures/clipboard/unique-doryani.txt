@@ -1,0 +1,18 @@
+Item Class: Body Armours
+Rarity: Unique
+Doryani's Prototype
+Scale Mail
+--------
+Armour: 120
+--------
+Requirements:
+Level: 33
+Str: 88
+--------
+Item Level: 70
+--------
+70% increased Armour
++72 to maximum Life
++100% of Armour also applies to Lightning Damage
+Enemies in your Presence have Lightning Resistance equal to yours
+Lightning Resistance does not affect Lightning damage taken

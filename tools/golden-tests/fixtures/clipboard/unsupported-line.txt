@@ -1,0 +1,10 @@
+Item Class: One Hand Maces
+Rarity: Rare
+Mock Item
+Plated Mace
+--------
+Item Level: 50
+--------
++22 to maximum Life
+This is not a real modifier line at all
++18% to Cold Resistance

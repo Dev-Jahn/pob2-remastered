@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  single-skill-mace.xml — golden fixture (DESIGN §7.4 case: SINGLE SKILL).
+
+  Intent: a level-1 Warrior wielding a single One Hand Mace with one basic Mace
+  Strike active skill. The minimal "one weapon, one attack" build — its AverageHit
+  / TotalDPS / CombinedDPS come straight from the weapon base + the granted skill,
+  so it is the canonical single-skill attack anchor.
+
+  Provenance (humanGate=gamedata): authored from upstream save formats, same method
+  as fixtures/sample-build.xml. NO live scraping, NO bundled GGG assets. gamedata
+  IDs used (all present in vendor/PathOfBuilding-PoE2/src/Data):
+    - class: Warrior  (PoB2 spec classId/classInternalId = 6)
+    - item base: Akoyan Club  (Bases/mace.lua, type "One Hand Mace")
+    - gem: Metadata/Items/Gems/SkillGemMaceStrike  (Mace Strike)
+    - granted skill: MeleeMaceMacePlayer
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Warrior" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="6" masteryEffects="" secondaryAscendClassId="nil" nodes="" treeVersion="0_5" classId="6">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1">
+			<Skill enabled="true" includeInFullDPS="false" label="" mainActiveSkill="1" mainActiveSkillCalcs="1">
+				<Gem nameSpec="Mace Strike" gemId="Metadata/Items/Gems/SkillGemMaceStrike" skillId="MeleeMaceMacePlayer" level="20" quality="0" enabled="true" count="1"/>
+			</Skill>
+		</SkillSet>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<Item id="1">Rarity: NORMAL
+Akoyan Club
+--------
+Item Level: 1
+</Item>
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1">
+			<Slot itemPbURL="" name="Weapon 1" itemId="1"/>
+		</ItemSet>
+	</Items>
+</PathOfBuilding2>

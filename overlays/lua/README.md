@@ -12,11 +12,12 @@ overlays/lua  ->  vendor/PathOfBuilding-PoE2/src
 
 ## Files (Phase 0 / Phase 1)
 
-| File                      | Purpose                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `headless_bootstrap.lua`  | Boot the core with UI globals stubbed; set package paths.                       |
-| `modern_api.lua`          | Stable calc/build API the Rust host calls over IPC; serializes results to JSON. |
-| `compatibility_shims.lua` | Shims for `src/Classes` / SimpleGraphic globals the calc layer touches.         |
+| File                      | Purpose                                                                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `headless_bootstrap.lua`  | Boot the core with UI globals stubbed; set package paths.                                                                                               |
+| `modern_api.lua`          | Stable calc/build API the Rust host calls over IPC; serializes results to JSON.                                                                         |
+| `runner.lua`              | Long-lived out-of-process JSON-RPC 2.0 runner (NDJSON over stdin/stdout) that dispatches to `modern_api`; core chatter to stderr, stdout protocol-only. |
+| `compatibility_shims.lua` | Shims for `src/Classes` / SimpleGraphic globals the calc layer touches.                                                                                 |
 
 These are scaffolding placeholders; implementation lands with the core-runner
 prototype (`DESIGN.md` §18 Phase 0–1).

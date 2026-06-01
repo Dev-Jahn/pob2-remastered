@@ -2,5 +2,23 @@
   "name": "@pob2/core-client",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pob2/schema": "workspace:*",
+    "ajv": "^8.17.1"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
 }

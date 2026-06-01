@@ -1,0 +1,15 @@
+Item Class: One Hand Maces
+Rarity: Rare
+Storm Bane
+Plated Mace
+--------
+Physical Damage: 28-46
+Attacks per Second: 1.25
+--------
+Sockets: S
+Rune: Adds 5 to 9 Physical Damage
+--------
+Item Level: 60
+--------
+60% increased Physical Damage
++25 to maximum Life

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  unarmed-monk.xml — golden fixture (task golden-fixtures; DESIGN §7.4 case: UNARMED).
+
+  Intent: a level-1 Monk with NO weapon and NO active skill. This is the pure
+  defensive/resource baseline of the §7.4 matrix — it exercises the life/mana/ES/
+  spirit, armour/evasion, max-resist and effective-hit-pool calc paths with zero
+  offensive contribution (no TotalDPS), so any drift in the defensive layer alone
+  shows up here.
+
+  Provenance (humanGate=gamedata): authored from the upstream save formats
+  (Build:Save / TreeTab:Save), same method as fixtures/sample-build.xml. NO live
+  scraping, NO bundled GGG assets. gamedata IDs used:
+    - class: Monk  (PoB2 spec classId/classInternalId = 10)
+  Tree starts empty (no allocated passives) so the build is fully deterministic.
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Monk" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="10" masteryEffects="" secondaryAscendClassId="nil" nodes="" treeVersion="0_5" classId="10">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1"/>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1"/>
+	</Items>
+</PathOfBuilding2>

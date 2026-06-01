@@ -1,0 +1,24 @@
+{
+  "id": "jewel-ranger",
+  "cases": ["jewel-radius-conversion"],
+  "intent": "Ranger with a Diamond jewel socketed into the tree — exercises the jewel/radius socket path.",
+  "stats": {
+    "Life": 65,
+    "Mana": 50,
+    "EnergyShield": 0,
+    "Ward": 0,
+    "Spirit": 100,
+    "TotalDPS": 0.36544921875,
+    "CombinedDPS": 0.36544921875,
+    "FullDPS": 0,
+    "AverageDamage": 0.221484375,
+    "TotalDot": 0,
+    "Armour": 0,
+    "Evasion": 23,
+    "TotalEHP": 47.758203222843,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

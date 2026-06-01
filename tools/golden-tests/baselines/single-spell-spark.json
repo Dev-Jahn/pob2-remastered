@@ -1,0 +1,25 @@
+{
+  "id": "single-spell-spark",
+  "cases": ["single-skill", "crit"],
+  "intent": "Sorceress casting Spark from a Wand — a single spell with non-zero base crit.",
+  "stats": {
+    "Life": 65,
+    "Mana": 67,
+    "EnergyShield": 0,
+    "Ward": 0,
+    "Spirit": 100,
+    "TotalDPS": 88.367857142857,
+    "CombinedDPS": 88.367857142857,
+    "FullDPS": 0,
+    "AverageHit": 61.8575,
+    "AverageDamage": 61.8575,
+    "TotalDot": 0,
+    "Armour": 0,
+    "Evasion": 7,
+    "TotalEHP": 47.758203222843,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

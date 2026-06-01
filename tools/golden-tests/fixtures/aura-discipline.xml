@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  aura-discipline.xml — golden fixture (DESIGN §7.4 case: AURA / RESERVATION).
+
+  Intent: a level-1 Sorceress running the Discipline aura (an energy-shield buff
+  that reserves spirit). This exercises the reservation + persistent-buff calc
+  path: Spirit reservation and the EnergyShield contribution distinguish it from a
+  no-skill baseline.
+
+  Provenance (humanGate=gamedata): authored from upstream save formats. NO live
+  scraping, NO bundled GGG assets. gamedata IDs used:
+    - class: Sorceress  (PoB2 spec classId/classInternalId = 7)
+    - gem: Metadata/Items/Gems/SkillGemDiscipline  (Discipline) -> skill DisciplinePlayer
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Sorceress" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="7" masteryEffects="" secondaryAscendClassId="nil" nodes="" treeVersion="0_5" classId="7">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1">
+			<Skill enabled="true" includeInFullDPS="false" label="" mainActiveSkill="1" mainActiveSkillCalcs="1">
+				<Gem nameSpec="Discipline" gemId="Metadata/Items/Gems/SkillGemDiscipline" skillId="DisciplinePlayer" level="20" quality="0" enabled="true" count="1"/>
+			</Skill>
+		</SkillSet>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1"/>
+	</Items>
+</PathOfBuilding2>

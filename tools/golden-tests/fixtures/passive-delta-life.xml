@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  passive-delta-life.xml — golden fixture (DESIGN §7.4 case: PASSIVE ALLOCATION DELTA).
+
+  Intent: a level-1 Warrior with a small allocated passive cluster reachable from
+  the Warrior class start (Armour / Melee / Life-Regeneration path). It is the
+  passive-allocation delta over the same class as an empty-tree Warrior: the only
+  difference from a no-tree build is the allocated node set, so any drift in how
+  allocated passive nodes fold into the output stats (Life, Armour, regen, …)
+  shows up here in isolation.
+
+  The `nodes` attribute below is the exact allocated-node set the upstream core
+  produced via PassiveSpec:AllocNode + SaveDB("xml") — a connected, reachable path
+  from the Warrior start, so it loads deterministically without pruning.
+
+  Provenance (humanGate=gamedata): authored from upstream save formats
+  (TreeTab:Save / PassiveSpec:Save) — the node ids are upstream tree-0_5 passive
+  ids, NOT live-scraped, and NO GGG assets are bundled. gamedata IDs used:
+    - class: Warrior  (PoB2 spec classId/classInternalId = 6)
+    - tree version: 0_5
+    - allocated passive nodes: 4665, 47175, 1913, 38646, 61534
+      (Armour / Melee Damage / Attribute / Life Regeneration cluster)
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Warrior" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="6" masteryEffects="" secondaryAscendClassId="nil" nodes="4665,47175,1913,38646,61534" treeVersion="0_5" classId="6">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgYAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1"/>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1"/>
+	</Items>
+</PathOfBuilding2>

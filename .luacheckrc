@@ -14,4 +14,8 @@ globals = {
   "build",
   "newBuild",
   "loadBuildFromXML",
+  -- core class constructor + the launch singleton (modern_api drives new("Item", ...)
+  -- and reads launch.promptMsg to detect a rejected build load).
+  "new",
+  "launch",
 }

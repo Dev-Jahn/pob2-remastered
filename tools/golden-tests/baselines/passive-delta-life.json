@@ -1,0 +1,24 @@
+{
+  "id": "passive-delta-life",
+  "cases": ["passive-delta"],
+  "intent": "Warrior with extra passive nodes allocated vs the unarmed baseline — a passive-allocation delta over the same class.",
+  "stats": {
+    "Life": 82,
+    "Mana": 50,
+    "EnergyShield": 0,
+    "Ward": 0,
+    "Spirit": 100,
+    "TotalDPS": 0.2698678125,
+    "CombinedDPS": 0.2698678125,
+    "FullDPS": 0,
+    "AverageDamage": 0.16355625,
+    "TotalDot": 0,
+    "Armour": 40,
+    "Evasion": 7,
+    "TotalEHP": 60.248810219587,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "minion-skeletal-arsonist",
+  "cases": ["minion"],
+  "intent": "Witch summoning Skeletal Arsonists — exercises the minion calc path.",
+  "stats": {
+    "Life": 65,
+    "Mana": 67,
+    "EnergyShield": 0,
+    "Ward": 0,
+    "Spirit": 100,
+    "TotalDPS": 0,
+    "CombinedDPS": 0,
+    "FullDPS": 0,
+    "AverageHit": 0,
+    "AverageDamage": 0,
+    "TotalDot": 0,
+    "Armour": 0,
+    "Evasion": 7,
+    "TotalEHP": 47.758203222843,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

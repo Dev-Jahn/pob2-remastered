@@ -1,0 +1,24 @@
+{
+  "id": "single-skill-mace",
+  "cases": ["single-skill"],
+  "intent": "Warrior with one One Hand Mace and a single Mace Strike active — minimal attack DPS.",
+  "stats": {
+    "Life": 82,
+    "Mana": 50,
+    "EnergyShield": 0,
+    "Ward": 0,
+    "Spirit": 100,
+    "TotalDPS": 2.8933100625,
+    "CombinedDPS": 2.8933100625,
+    "FullDPS": 0,
+    "AverageDamage": 1.99538625,
+    "TotalDot": 0,
+    "Armour": 0,
+    "Evasion": 7,
+    "TotalEHP": 60.248810219587,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

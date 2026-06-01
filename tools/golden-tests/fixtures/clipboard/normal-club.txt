@@ -1,0 +1,9 @@
+Item Class: One Hand Maces
+Rarity: Normal
+Wooden Club
+--------
+Physical Damage: 9-14
+Critical Hit Chance: 5.00%
+Attacks per Second: 1.45
+--------
+Item Level: 4

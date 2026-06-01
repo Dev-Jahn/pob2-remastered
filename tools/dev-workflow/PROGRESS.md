@@ -10,21 +10,25 @@
 
 - Pipeline: ✓ built & self-verified (commit 037cced — format/lint/typecheck/15 tests green)
 - Phase 0: ✓ done — squash-merged to `main` (97c5b13), pushed
-- Current phase: **1** (Core bridge MVP) — in progress on `feat/phase-1-core-bridge`
+- Current phase: **1** (Core bridge MVP) — **done / signed off** on `feat/phase-1-core-bridge`
 - Note: upstream `HeadlessWrapper.lua` present; share-code deflate is a Phase 1 dependency
+- TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in
+  root `tsconfig.json` `references`, and `core-client` is a composite project (`composite: true`
+  via `tsconfig.base.json`, with its own `references: [{ "path": "../schema" }]`), so a clean
+  `pnpm -w typecheck` (`tsc -b`) compiles both packages. Phase 1 gate set is **green** (see below).
 
 ## Phase ledger
 
-| Phase | Status      | Gate evidence                                      | 🚩Flags | Blockers |
-| ----- | ----------- | -------------------------------------------------- | ------- | -------- |
-| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below | 1       |          |
-| 1     | in progress |                                                    |         |          |
-| 2     | pending     |                                                    |         |          |
-| 3     | pending     |                                                    |         |          |
-| 4     | pending     |                                                    |         |          |
-| 5     | pending     |                                                    |         |          |
-| 6     | pending     |                                                    |         |          |
-| 7     | pending     |                                                    |         |          |
+| Phase | Status  | Gate evidence                                      | 🚩Flags | Blockers |
+| ----- | ------- | -------------------------------------------------- | ------- | -------- |
+| 0     | done    | `run-gate 0` pass; gates+exit codes recorded below | 1       |          |
+| 1     | done    | `run-gate 1` pass (7/7 required, exit 0); below    |         |          |
+| 2     | pending |                                                    |         |          |
+| 3     | pending |                                                    |         |          |
+| 4     | pending |                                                    |         |          |
+| 5     | pending |                                                    |         |          |
+| 6     | pending |                                                    |         |          |
+| 7     | pending |                                                    |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -52,6 +56,71 @@ Sample `--print-stats` JSON (deterministic for the fixture, 17 keys):
 (`compatibility_shims.lua`, `headless_bootstrap.lua`, `load_sample.lua`, `modern_api.lua`).
 luacheck is not preinstalled; provisioned via `luarocks install --local luacheck` (1.2.0, MIT) —
 no binary blob vendored, same policy as the lua-utf8 runtime dep.
+
+## Phase 1 gate evidence (task `register-ts-projects`)
+
+Ran the full Phase 1 gate set via `node tools/dev-workflow/run-gate.mjs 1`. Overall `pass: true`,
+process exit 0; all 7 required gates pass at exit 0. Gate names + exit codes + test counts (parsed
+from each gate's `evidence: exit=…` and the vitest summary):
+
+| Gate                 | required | status | exit | what it proves                                                                   |
+| -------------------- | -------- | ------ | ---- | -------------------------------------------------------------------------------- |
+| `format`             | true     | pass   | 0    | `pnpm -w format:check` → `All matched files use Prettier code style!`            |
+| `lint`               | true     | pass   | 0    | `pnpm -w lint` (eslint .) → no errors                                            |
+| `typecheck`          | true     | pass   | 0    | `pnpm -w typecheck` (`tsc -b`) compiles `@pob2/schema` + `@pob2/core-client`     |
+| `dev-workflow-tests` | true     | pass   | 0    | `@pob2/dev-workflow` — 29 tests / 9 files (JS guards + pipeline correctness)     |
+| `golden-parity`      | true     | pass   | 0    | `@pob2/core-client test golden` — 21 tests (calc.run vs recorded §7.4 baselines) |
+| `rpc-schema`         | true     | pass   | 0    | `@pob2/schema test` — 24 tests (schema registry + AJV-validated IPC schemas)     |
+| `crash-isolation`    | true     | pass   | 0    | `@pob2/core-client test crash` — 8 tests (malformed input never kills runner)    |
+
+These map to the Phase 1 **doneCriteria** (phases.mjs / DESIGN §18, §6.2, §14.2):
+
+- `기존 PoB와 주요 stat 일치 (golden diff, 허용오차 DESIGN §7.4)` — `golden-parity` runs the
+  recorded baselines through `calc.run` and asserts within §7.4 tolerances (NO-FALLBACK: a stub
+  cannot false-pass; 21 cases must match).
+- `malformed input에서도 runner/UI process 유지` — `crash-isolation` feeds non-JSON / oversized /
+  malformed input and asserts the runner emits a JSON-RPC error (e.g. -32700) and stays alive.
+- The `typecheck` gate now genuinely covers the new TS code because both packages are registered in
+  the solution build. Verified as load-bearing: a clean `tsc -b` with `@pob2/core-client` **removed**
+  from root `references` does not emit `packages/core-client/dist/` (uncovered); with it present, the
+  whole package compiles. `@pob2/schema` was already registered and is confirmed present.
+
+**luacheck on overlays + tools:** `pnpm -w lua:lint` (`luacheck overlays tools`) → exit 0,
+`Total: 0 warnings / 0 errors in 5 files` (`compatibility_shims.lua`, `headless_bootstrap.lua`,
+`load_sample.lua`, `modern_api.lua`, `runner.lua`). No new Lua files were added by this task; the
+core-runner Lua is kept luacheck-clean.
+
+## Phase 1 sign-off (task `phase1-gate`)
+
+Phase 1 freeze. Re-ran the full Phase 1 gate set with `node tools/dev-workflow/run-gate.mjs 1`
+(`gates.mjs` consumed **exactly as defined — not edited**; `git diff --quiet tools/dev-workflow/gates.mjs`
+is clean). Overall `pass: true`, process **exit 0**; every required gate exits 0:
+
+| Gate                 | required | status | exit | what it proves (this run)                                                         |
+| -------------------- | -------- | ------ | ---- | --------------------------------------------------------------------------------- |
+| `format`             | true     | pass   | 0    | `pnpm -w format:check` → `All matched files use Prettier code style!`             |
+| `lint`               | true     | pass   | 0    | `pnpm -w lint` (eslint .) → no errors                                             |
+| `typecheck`          | true     | pass   | 0    | `pnpm -w typecheck` (`tsc -b`) compiles `@pob2/schema` + `@pob2/core-client`      |
+| `dev-workflow-tests` | true     | pass   | 0    | `@pob2/dev-workflow` — 33 tests / 10 files (JS guards + pipeline + Phase 1 guard) |
+| `golden-parity`      | true     | pass   | 0    | `@pob2/core-client test golden` — 21 tests (calc.run vs recorded §7.4 baselines)  |
+| `rpc-schema`         | true     | pass   | 0    | `@pob2/schema test` — 24 tests (schema registry + AJV-validated IPC schemas)      |
+| `crash-isolation`    | true     | pass   | 0    | `@pob2/core-client test crash` — 8 tests (malformed input never kills runner)     |
+
+These map to the Phase 1 **doneCriteria** (phases.mjs / DESIGN §18) — the sign-off rests on them:
+
+- `기존 PoB와 주요 stat 일치 (golden diff, 허용오차 DESIGN §7.4)` — the `golden-parity` gate runs the
+  recorded baselines through `calc.run` and asserts within the **DESIGN §7.4** tolerances (integer stat
+  exact; float stat within `1e-6` or display precision). NO-FALLBACK: a stub cannot false-pass — all 21
+  golden cases must match.
+- `malformed input에서도 runner/UI process 유지` — the `crash-isolation` gate feeds non-JSON / oversized /
+  malformed lines and asserts the runner emits a JSON-RPC error (e.g. `-32700`) and **stays alive**, so a
+  bad message keeps the runner (and the UI driving it) running.
+
+Recorded exit codes (from this `run-gate 1` invocation): the process exit code is **0** (`run-gate.mjs`
+exits `0` iff no required gate `fail`ed), and each gate's `evidence` line begins `exit=0`. The
+`phase1-gate` sign-off is guarded by `test/progress-phase1.test.mjs`, which derives the required gate
+names straight from `gates.mjs` and asserts this row reads `done` with `exit=0` evidence — so the
+recorded sign-off cannot silently regress and the guard cannot drift from the gate set.
 
 ## 🚩 Flag log
 

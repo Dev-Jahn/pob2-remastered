@@ -160,6 +160,22 @@ function M.boot()
 		)
 	end
 
+	-- (6) Disable the dev auto-save-on-shutdown (DESIGN §6.2 out-of-process runner,
+	-- §14.2 crash isolation). Booting from the repo enables launch.devMode, so every
+	-- mode switch's buildMode:Shutdown auto-saves the OUTGOING build to a temp file
+	-- (Build.lua Shutdown -> SaveDBFile -> SaveDB). That is wrong twice for a headless
+	-- runner: (a) the Rust host owns file save/load, not the runner, so it must never
+	-- litter ~~temp~~.xml; and (b) when a malformed build.load leaves a HALF-BUILT
+	-- mode behind (Init aborted via ShowErrMsg before `self.savers` was set), the NEXT
+	-- load's mode-switch Shutdown tries to auto-save that poisoned build and crashes on
+	-- `pairs(self.savers)` (savers=nil) — one bad load poisoning the next. Disabling the
+	-- auto-save removes that path entirely, so a failed load can no longer corrupt a
+	-- later one. `disableDevAutoSave` is the upstream-provided opt-out (Build.lua:1087).
+	local mainObj = rawget(_G, "main")
+	if type(mainObj) == "table" then
+		mainObj.disableDevAutoSave = true
+	end
+
 	booted = rawget(_G, "build")
 	return booted
 end

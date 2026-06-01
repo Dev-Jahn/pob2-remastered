@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  dot-essence-drain.xml — golden fixture (DESIGN §7.4 cases: DoT, AILMENT).
+
+  Intent: a level-1 Witch casting Essence Drain from a Wand — a chaos
+  damage-over-time spell. It anchors the DoT pipeline (WithDotDPS / TotalDot) and,
+  as a chaos-degeneration skill, the ailment/degen branch of the §7.4 matrix.
+
+  Provenance (humanGate=gamedata): authored from upstream save formats. NO live
+  scraping, NO bundled GGG assets. gamedata IDs used:
+    - class: Witch  (PoB2 spec classId/classInternalId = 1)
+    - item base: Attuned Wand  (Bases/wand.lua, type "Wand")
+    - gem: Metadata/Items/Gems/SkillGemEssenceDrain  (Essence Drain)
+           -> skill EssenceDrainPlayer
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Witch" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="1" masteryEffects="" secondaryAscendClassId="nil" nodes="" treeVersion="0_5" classId="1">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1">
+			<Skill enabled="true" includeInFullDPS="false" label="" mainActiveSkill="1" mainActiveSkillCalcs="1">
+				<Gem nameSpec="Essence Drain" gemId="Metadata/Items/Gems/SkillGemEssenceDrain" skillId="EssenceDrainPlayer" level="20" quality="0" enabled="true" count="1"/>
+			</Skill>
+		</SkillSet>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<Item id="1">Rarity: NORMAL
+Attuned Wand
+--------
+Item Level: 1
+</Item>
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1">
+			<Slot itemPbURL="" name="Weapon 1" itemId="1"/>
+		</ItemSet>
+	</Items>
+</PathOfBuilding2>

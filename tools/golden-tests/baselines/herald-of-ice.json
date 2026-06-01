@@ -1,0 +1,21 @@
+{
+  "id": "herald-of-ice",
+  "cases": ["aura-reservation"],
+  "intent": "Ranger running Herald of Ice — a persistent reserved buff (reservation path).",
+  "stats": {
+    "Life": 65,
+    "Mana": 50,
+    "EnergyShield": 0,
+    "Ward": 0,
+    "Spirit": 100,
+    "CombinedDPS": 0,
+    "FullDPS": 0,
+    "Armour": 0,
+    "Evasion": 7,
+    "TotalEHP": 47.758203222843,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

@@ -1,0 +1,12 @@
+Item Class: One Hand Maces
+Rarity: Magic
+Heavy Smithing Hammer of the Whelpling
+--------
+Physical Damage: 12-20
+Attacks per Second: 1.30
+--------
+Item Level: 12
+--------
+23% increased Physical Damage
+--------
++11% to Fire Resistance

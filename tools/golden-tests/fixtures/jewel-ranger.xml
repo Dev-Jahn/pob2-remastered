@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  jewel-ranger.xml — golden fixture (DESIGN §7.4 case: JEWEL / RADIUS / CONVERSION).
+
+  Intent: a level-1 Ranger whose passive tree allocates the path out to a Jewel
+  Socket node (tree node 60735), with a Diamond jewel base present in the item
+  library. This anchors the jewel/radius mechanism: a jewel socket is the tree
+  anchor whose radius a socketed jewel would affect, and allocating it exercises
+  the jewel-socket node handling in the tree + calc path. The allocated node set
+  below is the exact connected path the upstream core produced via
+  PassiveSpec:AllocNode out to that socket, so it loads deterministically.
+
+  NOTE (humanGate=gamedata, honest limitation): the vendored PoB2 core's
+  ItemsTab:Load binds a tree-socketed jewel by its PoB item URL (SocketIdURL
+  pbURL), not by a local item id, so a jewel cannot be round-tripped into a tree
+  socket purely from a self-contained, asset-free XML in this version. This
+  fixture therefore anchors the jewel-SOCKET (radius anchor) allocation path
+  deterministically and keeps the Diamond jewel in the library as the documented
+  jewel base, rather than fabricating an unsupported binding (NO-FALLBACK).
+
+  Provenance (humanGate=gamedata): authored from upstream save formats
+  (TreeTab:Save + ItemsTab:Save). NO live scraping, NO bundled GGG assets.
+  gamedata IDs used:
+    - class: Ranger  (PoB2 spec classId/classInternalId = 2)
+    - tree version: 0_5
+    - jewel socket node: 60735  (isJewelSocket)
+    - allocated passive path: 1140, 13828, 15507, 21280, 28050, 35901, 48401,
+      50459, 60735, 61312, 63888
+    - item base: Diamond  (Bases/jewel.lua, type "Jewel")
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Ranger" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="2" masteryEffects="" secondaryAscendClassId="nil" nodes="1140,13828,15507,21280,28050,35901,48401,50459,60735,61312,63888" treeVersion="0_5" classId="2">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1"/>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<Item id="1">Rarity: MAGIC
+Gleaming Diamond of the Hawk
+--------
+Item Level: 1
+--------
+12% increased Critical Damage Bonus
+</Item>
+		<ItemSet useSecondWeaponSet="nil" title="Default" id="1"/>
+	</Items>
+</PathOfBuilding2>

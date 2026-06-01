@@ -1,0 +1,20 @@
+Item Class: One Hand Maces
+Rarity: Rare
+Brood Bane
+Plated Mace
+--------
+Physical Damage: 28-46
+Critical Hit Chance: 5.00%
+Attacks per Second: 1.25
+--------
+Requirements:
+Level: 33
+Str: 67
+--------
+Item Level: 45
+--------
++15 to Strength
+54% increased Physical Damage
++22 to maximum Life
++18% to Cold Resistance
+Adds 5 to 12 Fire Damage

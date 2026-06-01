@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  armoured-mace.xml — golden fixture (DESIGN §7.4 cases: SINGLE SKILL, ITEM SET SWAP).
+
+  Intent: a level-1 Warrior with a Mace + Body Armour, defined across TWO item sets:
+    - Set 1 "Armoured" (ACTIVE): Weapon 1 = Akoyan Club, Body Armour = Bearskin
+      Mantle (base Armour 207 / Energy Shield 60).
+    - Set 2 "Stripped": Weapon 1 = Akoyan Club only (no body armour).
+  The build is saved with activeItemSet="1", so the recorded baseline is the
+  armoured set and is fully deterministic. The presence of a second, swappable set
+  is what the §7.4 "item set swap" case requires — swapping to Set 2 would drop the
+  Armour/EnergyShield contribution, so this fixture anchors the multi-itemset load
+  path and the armour/ES defensive contribution together.
+
+  Provenance (humanGate=gamedata): authored from upstream save formats
+  (ItemsTab:Save with two <ItemSet> blocks). NO live scraping, NO bundled GGG
+  assets. gamedata IDs used (all present in vendor/PathOfBuilding-PoE2/src/Data):
+    - class: Warrior  (PoB2 spec classId/classInternalId = 6)
+    - item base: Akoyan Club  (Bases/mace.lua, type "One Hand Mace")
+    - item base: Bearskin Mantle  (Bases/body.lua, type "Body Armour")
+    - gem: Metadata/Items/Gems/SkillGemMaceStrike  (Mace Strike)
+    - granted skill: MeleeMaceMacePlayer
+-->
+<PathOfBuilding2>
+	<Build level="1" className="Warrior" ascendClassName="None" targetVersion="0_1" characterLevelAutoMode="true" mainSocketGroup="1" viewMode="TREE"/>
+	<Tree activeSpec="1">
+		<Spec ascendancyInternalId="" ascendClassId="0" classInternalId="6" masteryEffects="" secondaryAscendClassId="nil" nodes="" treeVersion="0_5" classId="6">
+			<URL>https://www.pathofexile.com/passive-skill-tree/AAAABgIAAAAA</URL>
+			<Sockets/>
+			<Overrides>
+				<AttributeOverride dexNodes="" intNodes="" strNodes=""/>
+			</Overrides>
+		</Spec>
+	</Tree>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="true" defaultGemQuality="nil" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1">
+			<Skill enabled="true" includeInFullDPS="false" label="" mainActiveSkill="1" mainActiveSkillCalcs="1">
+				<Gem nameSpec="Mace Strike" gemId="Metadata/Items/Gems/SkillGemMaceStrike" skillId="MeleeMaceMacePlayer" level="20" quality="0" enabled="true" count="1"/>
+			</Skill>
+		</SkillSet>
+	</Skills>
+	<Items activeItemSet="1" showStatDifferences="true" useSecondWeaponSet="nil">
+		<Item id="1">Rarity: NORMAL
+Akoyan Club
+--------
+Item Level: 1
+</Item>
+		<Item id="2">Rarity: NORMAL
+Bearskin Mantle
+--------
+Item Level: 1
+</Item>
+		<ItemSet useSecondWeaponSet="nil" title="Armoured" id="1">
+			<Slot itemPbURL="" name="Weapon 1" itemId="1"/>
+			<Slot itemPbURL="" name="Body Armour" itemId="2"/>
+		</ItemSet>
+		<ItemSet useSecondWeaponSet="nil" title="Stripped" id="2">
+			<Slot itemPbURL="" name="Weapon 1" itemId="1"/>
+			<Slot itemPbURL="" name="Body Armour" itemId="0"/>
+		</ItemSet>
+	</Items>
+</PathOfBuilding2>

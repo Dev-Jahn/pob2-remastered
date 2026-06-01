@@ -1,0 +1,14 @@
+{
+  "name": "@pob2/golden-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "record": "node record-baselines.mjs",
+    "check": "node record-baselines.mjs --check",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

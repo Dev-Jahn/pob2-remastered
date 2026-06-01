@@ -1,0 +1,25 @@
+{
+  "id": "dot-essence-drain",
+  "cases": ["dot", "ailment"],
+  "intent": "Witch casting Essence Drain from a Wand — a chaos damage-over-time spell.",
+  "stats": {
+    "Life": 65,
+    "Mana": 67,
+    "EnergyShield": 0,
+    "Ward": 0,
+    "Spirit": 100,
+    "TotalDPS": 264.15625,
+    "CombinedDPS": 264.15625,
+    "FullDPS": 0,
+    "AverageHit": 211.325,
+    "AverageDamage": 211.325,
+    "TotalDot": 0,
+    "Armour": 0,
+    "Evasion": 7,
+    "TotalEHP": 47.758203222843,
+    "FireResist": -50,
+    "ColdResist": -50,
+    "LightningResist": -50,
+    "ChaosResist": 0
+  }
+}

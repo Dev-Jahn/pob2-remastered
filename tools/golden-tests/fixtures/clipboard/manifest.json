@@ -1,0 +1,70 @@
+{
+  "normal-club": {
+    "intent": "normal-rarity weapon, base only, no mods",
+    "baseId": "Wooden Club",
+    "rarity": "NORMAL",
+    "name": "Wooden Club",
+    "parsedMods": [],
+    "unsupported": []
+  },
+  "magic-mace": {
+    "intent": "magic weapon with two explicit mods",
+    "baseId": "Smithing Hammer",
+    "rarity": "MAGIC",
+    "name": "Heavy Smithing Hammer of the Whelpling",
+    "parsedMods": ["23% increased Physical Damage", "+11% to Fire Resistance"],
+    "unsupported": []
+  },
+  "rare-mace": {
+    "intent": "rare weapon (named + base line) with five explicit mods and requirements",
+    "baseId": "Plated Mace",
+    "rarity": "RARE",
+    "name": "Brood Bane, Plated Mace",
+    "parsedMods": [
+      "+15 to Strength",
+      "54% increased Physical Damage",
+      "+22 to maximum Life",
+      "+18% to Cold Resistance",
+      "Adds 5 to 12 Fire Damage"
+    ],
+    "unsupported": []
+  },
+  "unique-doryani": {
+    "intent": "unique body armour with explicit and behavioural mods",
+    "baseId": "Scale Mail",
+    "rarity": "UNIQUE",
+    "name": "Doryani's Prototype, Scale Mail",
+    "parsedMods": [
+      "70% increased Armour",
+      "+72 to maximum Life",
+      "+100% of Armour also applies to Lightning Damage",
+      "Enemies in your Presence have Lightning Resistance equal to yours",
+      "Lightning Resistance does not affect Lightning damage taken"
+    ],
+    "unsupported": []
+  },
+  "implicit-corrupted-quality": {
+    "intent": "rare gloves: implicit + explicits, quality, sockets, corrupted",
+    "baseId": "Riveted Mitts",
+    "rarity": "RARE",
+    "name": "Gale Grip, Riveted Mitts",
+    "parsedMods": ["+12 to Strength", "+45 to maximum Life", "+24% to Lightning Resistance"],
+    "unsupported": []
+  },
+  "rune-socket": {
+    "intent": "rare weapon with a socket and a rune mod consumed as properties",
+    "baseId": "Plated Mace",
+    "rarity": "RARE",
+    "name": "Storm Bane, Plated Mace",
+    "parsedMods": ["60% increased Physical Damage", "+25 to maximum Life"],
+    "unsupported": []
+  },
+  "unsupported-line": {
+    "intent": "rare weapon where one gibberish line must be preserved as unsupported (NO silent drop, §8.6)",
+    "baseId": "Plated Mace",
+    "rarity": "RARE",
+    "name": "Mock Item, Plated Mace",
+    "parsedMods": ["+22 to maximum Life", "+18% to Cold Resistance"],
+    "unsupported": ["This is not a real modifier line at all"]
+  }
+}
