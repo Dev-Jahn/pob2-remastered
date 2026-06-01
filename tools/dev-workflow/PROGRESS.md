@@ -8,21 +8,22 @@
 
 ## State
 
-- Current phase: _to be assessed_
-- Last commit: _none yet (pipeline build in progress)_
+- Pipeline: ✓ built & self-verified (commit 037cced — format/lint/typecheck/15 tests green)
+- Current phase: **0** (Core runner boot PoC) — in progress on `feat/phase-0-core-runner`
+- Note: upstream `HeadlessWrapper.lua` present → Phase 0 tractable
 
 ## Phase ledger
 
-| Phase | Status  | Gate evidence | 🚩Flags | Blockers |
-| ----- | ------- | ------------- | ------- | -------- |
-| 0     | pending |               |         |          |
-| 1     | pending |               |         |          |
-| 2     | pending |               |         |          |
-| 3     | pending |               |         |          |
-| 4     | pending |               |         |          |
-| 5     | pending |               |         |          |
-| 6     | pending |               |         |          |
-| 7     | pending |               |         |          |
+| Phase | Status      | Gate evidence | 🚩Flags | Blockers |
+| ----- | ----------- | ------------- | ------- | -------- |
+| 0     | in progress |               |         |          |
+| 1     | pending     |               |         |          |
+| 2     | pending     |               |         |          |
+| 3     | pending     |               |         |          |
+| 4     | pending     |               |         |          |
+| 5     | pending     |               |         |          |
+| 6     | pending     |               |         |          |
+| 7     | pending     |               |         |          |
 
 ## 🚩 Flag log
 
