@@ -57,10 +57,11 @@ const REPORT_SCHEMA = {
 phase('Decompose');
 const { tasks } = await agent(
   `You decompose ONE phase of the PoB2 Remastered project into concrete, dependency-ordered implementation tasks.
-Read: ./DESIGN.md, ./tools/dev-workflow/phases.mjs (PHASES[${PHASE}]), and the CURRENT repo tree (what already exists).
+Read: ./DESIGN.md, ./tools/dev-workflow/phases.mjs (PHASES[${PHASE}]), ./tools/dev-workflow/PROGRESS.md, and the CURRENT repo tree (what already exists).
 Produce tasks that build on existing code toward PHASES[${PHASE}].doneCriteria. For each task give id, title, deliverable,
 exact targetFiles, deps (ids of prerequisite tasks), a runnable verifyCmd (test command), and humanGate if it needs
-legal/network/secret/visual/gamedata. Keep tasks small and TDD-friendly. Do NOT modify vendor/.`,
+legal/network/secret/visual/gamedata. Keep tasks small and TDD-friendly. Do NOT modify vendor/.
+IMPORTANT: any PROGRESS.md 🚩flag/blocker marked "CARRYOVER→Phase ${PHASE}" (or a prior-phase gap that blocks this phase's doneCriteria) MUST become an explicit early task.`,
   { label: `decompose:p${PHASE}`, phase: 'Decompose', schema: TASKS_SCHEMA },
 );
 
@@ -115,12 +116,16 @@ const gate = await agent(
    - Tier 1 (REQUIRED): \`node tools/dev-workflow/visual-verify.mjs url http://localhost:<port><route> /tmp/pob-${PHASE}-<name>.png 1366x768\`.
    - Tier 2 (ALWAYS ATTEMPT, not required): build/run the Tauri binary and
      \`node tools/dev-workflow/visual-verify.mjs tauri <binary> /tmp/pob-${PHASE}-<name>-tauri.png\` (flag if TIER2_UNAVAILABLE).
-   - Analyze each screenshot with the gemini-vision skill and assert EVERY fact in that screen's
-     \`assert\` list. A blank/error page or any failed assertion is a visual FAIL — fix the UI via
-     TDD and re-screenshot, up to 3 rounds. Stop the server when done.
+   - Analyze each screenshot and assert EVERY fact in that screen's \`assert\` list. PREFER the
+     gemini-vision skill; if it is unavailable (e.g. OAuth not configured), read the PNG yourself —
+     you have vision — and add a flag noting gemini-vision was unavailable. The verifier being
+     unavailable is a FLAG, never a fail, as long as the screenshot is captured non-blank and you
+     verify it by direct reading. A blank/error page or any failed assert IS a visual FAIL — fix
+     the UI via TDD and re-screenshot, up to 3 rounds. Stop the server when done.
 
-Return: pass = true ONLY if all required shell/golden gates AND all Tier-1 visual asserts pass.
-gateJson = the run-gate output; flags = env-missing + Tier-2 notes + gemini-vision caveats; blockers = anything unfixable.`,
+Return: pass = true if all required shell/golden gates pass AND every Tier-1 visual assert is
+verified (by gemini-vision OR your own direct reading). gateJson = the run-gate output;
+flags = env-missing + Tier-2 notes + gemini-vision-unavailable; blockers = anything unfixable.`,
   { label: `gate:p${PHASE}`, phase: 'Gate', schema: REPORT_SCHEMA },
 );
 

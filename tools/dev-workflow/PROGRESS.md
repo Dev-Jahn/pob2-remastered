@@ -11,7 +11,8 @@
 - Pipeline: ✓ built & self-verified (commit 037cced — format/lint/typecheck/15 tests green)
 - Phase 0: ✓ done — squash-merged to `main` (97c5b13), pushed
 - Phase 1: ✓ done — squash-merged to `main` (8fb171e), pushed
-- Current phase: **2** (Desktop shell & Overview) — in progress on `feat/phase-2-shell-overview`
+- Phase 2: ✓ done — squash-merged to `main` (c2e43b9), pushed
+- Current phase: **3** (Items tab rebuild) — in progress on `feat/phase-3-items`
 - Env: Rust toolchain provisioned (cargo 1.96, user-space `~/.cargo`, reachable in login shell);
   `webkit2gtk-4.1` dev libs already present → Tauri buildable; Playwright chromium present → visual gates live
 - TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in
@@ -21,16 +22,16 @@
 
 ## Phase ledger
 
-| Phase | Status      | Gate evidence                                      | 🚩Flags | Blockers |
-| ----- | ----------- | -------------------------------------------------- | ------- | -------- |
-| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below | 1       |          |
-| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below    |         |          |
-| 2     | in progress |                                                    |         |          |
-| 3     | pending     |                                                    |         |          |
-| 4     | pending     |                                                    |         |          |
-| 5     | pending     |                                                    |         |          |
-| 6     | pending     |                                                    |         |          |
-| 7     | pending     |                                                    |         |          |
+| Phase | Status      | Gate evidence                                                    | 🚩Flags | Blockers |
+| ----- | ----------- | ---------------------------------------------------------------- | ------- | -------- |
+| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below               | 1       |          |
+| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below                  |         |          |
+| 2     | done        | `run-gate 2` pass (8/8); visual verified by direct vision; below | 2       |          |
+| 3     | in progress |                                                                  |         |          |
+| 4     | pending     |                                                                  |         |          |
+| 5     | pending     |                                                                  |         |          |
+| 6     | pending     |                                                                  |         |          |
+| 7     | pending     |                                                                  |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -127,6 +128,25 @@ recorded sign-off cannot silently regress and the guard cannot drift from the ga
 ## 🚩 Flag log
 
 _(human-gate decisions made autonomously — review later)_
+
+- **CARRYOVER→Phase 3 — core bridge over Tauri IPC** (Phase 2 review, ARCHITECTURAL) — The shipped
+  desktop app cannot actually open a build / run calc yet: `apps/desktop/src/main.tsx` renders
+  `<App/>` with no session, and the real `CoreClient` uses `node:child_process`
+  (`packages/core-client/src/runner-client.ts`), which cannot run inside the Tauri WebView. Phase 2's
+  "open build → Overview" doneCriteria is met only at component/jsdom level (mock client). **Phase 3
+  must first wire a Rust-side core bridge** (Tauri host spawns the Lua runner as a sidecar and exposes
+  `calc.run`/`build.load` over IPC) so the real app drives Overview/Items from live stats.
+
+- **p2/gemini-vision-unavailable** (Phase 2, visual verifier) — gemini-vision OAuth is not configured
+  in this env (no antigravity accounts file), so the engine could not LLM-attest the Tier-1 overview
+  screenshot. Resolved per spec §6.1 fallback: the driver verified `/tmp/pob-2-overview.png` by direct
+  Claude vision — all 3 §10.2/§10.3 asserts hold (3-pane shell; offence/defence/resource/warnings
+  cards with missing-markers not 0s; 한국어/영어 toggle, Korean selected). Configure antigravity OAuth
+  for the "precise" verifier; not required.
+
+- **p2/i18n-gate + stat-label-locale** (Phase 2 review, minor) — the `i18n-toggle` gate runs only
+  `App.i18n.test.tsx` (not the full desktop suite). Overview stat-row labels stay English in ko-KR
+  (card titles ARE localized); full stat-label localization is Phase 6 scope.
 
 - **driver/gate-hardening** (Phase 0 review follow-up) — Added `dev-workflow-tests` to the BASE
   gate set so the JS guards + pipeline tests cannot silently regress in Phases 1–7 (the Phase 0
