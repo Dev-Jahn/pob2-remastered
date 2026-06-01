@@ -4,7 +4,9 @@ export const meta = {
   phases: [{ title: 'Decompose' }, { title: 'Implement' }, { title: 'Gate' }, { title: 'Review' }],
 };
 
-const PHASE = args?.phase;
+// args may arrive as an object or as a JSON string depending on the caller — handle both.
+const ARGS = typeof args === 'string' ? JSON.parse(args) : (args ?? {});
+const PHASE = ARGS.phase;
 if (PHASE === undefined) throw new Error('args.phase required');
 
 const TASKS_SCHEMA = {
