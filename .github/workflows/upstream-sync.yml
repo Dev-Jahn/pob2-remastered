@@ -1,0 +1,33 @@
+name: Upstream Sync
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # weekly, Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Skeleton for DESIGN.md §7.2-§7.3: fetch upstream/dev, classify the diff, and open
+# a PR that bumps the vendored submodule with a test report. Filled in at Phase 7.
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Fetch upstream/dev
+        run: |
+          cd vendor/PathOfBuilding-PoE2
+          git remote get-url upstream >/dev/null 2>&1 \
+            || git remote add upstream https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
+          git fetch upstream dev
+          echo "upstream/dev = $(git rev-parse --short upstream/dev)"
+          echo "vendored     = $(git rev-parse --short HEAD)"
+      - name: Classify diff
+        run: echo "::notice::TODO Phase 7 — diff classifier routes changes to targeted verification (DESIGN.md §7.3)."
+      - name: Open sync PR
+        run: echo "::notice::TODO Phase 7 — bump submodule pointer + open PR with test report."

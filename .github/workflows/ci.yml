@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Skeleton CI mirroring DESIGN.md §17.1. Steps for not-yet-scaffolded phases emit
+# a notice instead of failing, and are filled in as each phase lands.
+
+jobs:
+  lint:
+    name: Lint (TS / Rust / Lua)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prettier
+        run: pnpm format:check
+      - name: ESLint
+        run: pnpm lint
+      - name: TypeScript
+        run: pnpm typecheck
+      - name: Rust fmt + clippy
+        run: |
+          rustup component add rustfmt clippy
+          if find . -name Cargo.toml -not -path './vendor/*' -print -quit | grep -q .; then
+            cargo fmt --all -- --check
+            cargo clippy --all-targets --all-features -- -D warnings
+          else
+            echo "::notice::No Rust crates yet — skipping fmt/clippy."
+          fi
+      - name: Lua lint
+        run: |
+          sudo apt-get update && sudo apt-get install -y luarocks
+          sudo luarocks install luacheck
+          luacheck overlays tools
+
+  test-core:
+    name: Core golden + parser fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup Lua + LuaJIT
+        run: sudo apt-get update && sudo apt-get install -y lua5.1 luajit luarocks
+      - name: Golden tests
+        run: echo "::notice::TODO Phase 0-1 — boot pob-core-runner, run golden tests + parser fixtures (DESIGN.md §7.4, §16)."
+
+  test-localization:
+    name: Localization coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Importer dry-run + coverage
+        run: echo "::notice::TODO Phase 6 — poe2db importer dry-run, validate dictionaries, report coverage (DESIGN.md §8)."
+
+  test-ui:
+    name: UI unit + E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Vitest + Playwright
+        run: echo "::notice::TODO Phase 2+ — Vitest unit + Playwright smoke (DESIGN.md §16)."
+
+  package:
+    name: Package (${{ matrix.os }})
+    needs: [lint, test-core, test-ui]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build installers
+        run: echo "::notice::TODO Phase 7 — tauri build + installer/portable artifacts (DESIGN.md §17.2)."

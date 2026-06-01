@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Rust / Cargo / Tauri
+target/
+**/target/
+apps/desktop/src-tauri/gen/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editors / IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local caches / generated artifacts
+.cache/
+coverage/
+.localization-cache/
+*.local
+
+# Lua coverage
+luacov.stats.out
+luacov.report.out
+
+# Note: vendor/ is a git submodule and is intentionally tracked.

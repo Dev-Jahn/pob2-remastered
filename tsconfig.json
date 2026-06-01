@@ -1,0 +1,5 @@
+{
+  "//": "Solution-style root config. Add each composite TS package to references as it is created.",
+  "files": [],
+  "references": [{ "path": "packages/schema" }]
+}

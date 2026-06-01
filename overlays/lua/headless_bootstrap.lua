@@ -1,0 +1,10 @@
+--- headless_bootstrap.lua
+---
+--- Boots the upstream PoB2 Lua core in a headless (no-UI) context.
+---
+--- Responsibilities (DESIGN.md §6.2):
+---   * Set package.path / package.cpath priority: overlays/lua -> vendor/.../src
+---   * Stub or shim UI globals the calc/data layer touches.
+---   * Expose a minimal entrypoint the Rust host can drive over IPC.
+---
+--- Status: scaffolding placeholder — implemented in Phase 0 (DESIGN.md §18).

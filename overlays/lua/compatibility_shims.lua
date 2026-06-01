@@ -1,0 +1,7 @@
+--- compatibility_shims.lua
+---
+--- Shims for UI-coupled globals so the calc/data layer can run without the
+--- original SimpleGraphic renderer or src/Classes UI (DESIGN.md §6.2, §19).
+--- Keep shims minimal and explicit to reduce upstream merge conflicts.
+---
+--- Status: scaffolding placeholder — implemented in Phase 0–1 (DESIGN.md §18).

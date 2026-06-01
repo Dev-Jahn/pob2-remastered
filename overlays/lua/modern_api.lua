@@ -1,0 +1,7 @@
+--- modern_api.lua
+---
+--- Stable, UI-agnostic API surface over the upstream calc/build core. Mirrors the
+--- CoreRequestMap in DESIGN.md §6.3 (build.*, calc.*, items.*, tree.*, skills.*,
+--- config.*) and serializes results to JSON for the Rust host (DESIGN.md §6.4).
+---
+--- Status: scaffolding placeholder — implemented in Phase 1 (DESIGN.md §18).

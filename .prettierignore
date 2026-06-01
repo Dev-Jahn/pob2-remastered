@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+out
+target
+vendor
+pnpm-lock.yaml
+*.lua
+
+# Authored design doc — kept verbatim, not reformatted.
+DESIGN.md
