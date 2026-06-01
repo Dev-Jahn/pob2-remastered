@@ -18,8 +18,14 @@ export async function runGate(gates) {
     const stderr = (p.stderr || '') + (p.error ? String(p.error) : '');
     const status = classify(code, stdout, stderr);
     const tail = (s) => s.split('\n').slice(-12).join('\n');
-    return { name: g.name, cmd: g.cmd, kind: g.kind, required: g.required, status,
-             evidence: `exit=${code}\n${tail(stdout)}\n${tail(stderr)}`.trim() };
+    return {
+      name: g.name,
+      cmd: g.cmd,
+      kind: g.kind,
+      required: g.required,
+      status,
+      evidence: `exit=${code}\n${tail(stdout)}\n${tail(stderr)}`.trim(),
+    };
   });
   const pass = !results.some((r) => r.required && r.status === 'fail');
   return { pass, results };
@@ -28,9 +34,11 @@ export async function runGate(gates) {
 // CLI: node run-gate.mjs <phase>
 if (import.meta.url === `file://${process.argv[1]}`) {
   const phase = process.argv[2];
-  if (phase === '--selfcheck') { console.log('run-gate ok'); process.exit(0); }
   const gates = GATES[phase];
-  if (!gates) { console.error(`no gates for phase ${phase}`); process.exit(2); }
+  if (!gates) {
+    console.error(`no gates for phase ${phase}`);
+    process.exit(2);
+  }
   const r = await runGate(gates);
   console.log(JSON.stringify({ phase: Number(phase), ...r }, null, 2));
   process.exit(r.pass ? 0 : 1);

@@ -7,6 +7,7 @@ Run the dev-workflow pipeline for PoB2 Remastered.
 Argument: `$ARGUMENTS` (a phase number `0`..`7`, or `auto` for full Phase 0→7).
 
 Steps:
+
 1. Read `tools/dev-workflow/PROGRESS.md` for current state.
 2. For the target phase(s), invoke the Workflow tool with script `tools/dev-workflow/phase-pipeline.mjs` and `args:{phase:N}`.
 3. After the engine returns, RE-RUN the gate yourself for evidence: `node tools/dev-workflow/run-gate.mjs N`.

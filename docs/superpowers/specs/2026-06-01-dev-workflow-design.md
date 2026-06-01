@@ -25,15 +25,15 @@
 
 ## 2. 자율성 정책 — 완전 무인
 
-| 항목 | 정책 |
-|---|---|
-| **정지 조건 (유일)** | 자가수정 불가능한 **기술 블로커**(컴파일/테스트가 자가수정 루프 후에도 반복 실패). 이때만 사용자에게 증거와 함께 보고하고 멈춘다. |
-| **사람-게이트** | 멈추지 않고 **best-effort + 🚩FLAG**(PROGRESS.md 기록)로 처리하고 진행. **크게 문제 없는 수준의 판단은 사용자에게 묻지 않고 자율 결정**하고 FLAG로만 남긴다. |
-| 외부 네트워크 | 라이브 호출 금지 → **고정 fixture/캐시 HTML** 사용 (DESIGN §14.3) |
-| 자산/아이콘 | 번들 금지 → `do_not_bundle` 유지 · remote-ref 설계 (DESIGN §9, §15) |
-| 시크릿/서명 | 위조 금지 → config 훅 + env 참조 stub (DESIGN §13, §17.2) |
-| git 원격 | Phase별 squash-merge **후 `origin` push** (사용자 승인). PR 자동 생성은 Phase 7 sync-bot 한정 |
-| 공식 한국어 용어 | 자동 매핑 + confidence 표기, 최종 용어 확정은 FLAG (DESIGN §8.1) |
+| 항목                 | 정책                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **정지 조건 (유일)** | 자가수정 불가능한 **기술 블로커**(컴파일/테스트가 자가수정 루프 후에도 반복 실패). 이때만 사용자에게 증거와 함께 보고하고 멈춘다.                            |
+| **사람-게이트**      | 멈추지 않고 **best-effort + 🚩FLAG**(PROGRESS.md 기록)로 처리하고 진행. **크게 문제 없는 수준의 판단은 사용자에게 묻지 않고 자율 결정**하고 FLAG로만 남긴다. |
+| 외부 네트워크        | 라이브 호출 금지 → **고정 fixture/캐시 HTML** 사용 (DESIGN §14.3)                                                                                            |
+| 자산/아이콘          | 번들 금지 → `do_not_bundle` 유지 · remote-ref 설계 (DESIGN §9, §15)                                                                                          |
+| 시크릿/서명          | 위조 금지 → config 훅 + env 참조 stub (DESIGN §13, §17.2)                                                                                                    |
+| git 원격             | Phase별 squash-merge **후 `origin` push** (사용자 승인). PR 자동 생성은 Phase 7 sync-bot 한정                                                                |
+| 공식 한국어 용어     | 자동 매핑 + confidence 표기, 최종 용어 확정은 FLAG (DESIGN §8.1)                                                                                             |
 
 근거: NO-FALLBACK 원칙은 "가짜로 통과시키지 말라"는 뜻이며, 위 정책은 **미완을 미완으로 명시**하므로 위반이 아니다. 동시에 DESIGN.md가 이미 정한 안전 기본값과 정확히 일치한다.
 
@@ -86,7 +86,9 @@ tools/dev-workflow/
 입력: `{ phase: number }`. 단계:
 
 ### 5.1 decompose
+
 에이전트가 `현재 repo 트리 + DESIGN.md + phases.mjs[phase]`를 읽고 구조화 출력:
+
 ```ts
 Task = {
   id: string; title: string; deliverable: string;
@@ -97,20 +99,25 @@ Task = {
 ```
 
 ### 5.2 TDD 구현 (pipeline)
+
 - 작업을 **의존성 위상순서**로 실행. 서로 독립 + `targetFiles` 비교차인 작업만 worktree 격리 병렬.
 - 각 작업: **실패 테스트 작성 → 구현 → `verifyCmd` 통과까지 자가수정 루프**(상한 N회). superpowers `test-driven-development` 원칙 준수.
 - `humanGate` 표시 작업: 안전 기본값으로 best-effort 구현 + 🚩FLAG 반환.
 
 ### 5.3 게이트
+
 `gates.mjs[phase]`의 `required` 커맨드를 실제 실행. `kind`:
+
 - `shell`: `pnpm format:check|lint|typecheck`, `cargo check`, Vitest 등
 - `golden`: 코어 러너 출력 vs upstream golden diff (허용오차 DESIGN §7.4)
 - `visual`: §6 참조
 
 ### 5.4 적대적 리뷰
+
 `code-review` 에이전트가 Phase diff를 DESIGN.md 정합성·정확성·NO-FALLBACK 기준으로 검증. 실제 결함만 수정 루프로 환원(거짓양성 배제).
 
 ### 5.5 리포트
+
 ```ts
 PhaseReport = {
   phase: number; doneTasks: string[];
@@ -127,6 +134,7 @@ PhaseReport = {
 환경 프로브 결과 **실현 가능**: WSLg(`DISPLAY=:0`, `wayland-0`) + Xvfb 존재, pnpm/npx 존재.
 
 ### 6.1 메커니즘 (`visual-verify.mjs`)
+
 - **Tier 1 — 웹 UI 레이아웃 (주 경로, CI에서도 재현):** Playwright(chromium)로 React dev 서버를 띄워 핵심 화면을 **1366×768 / 4K**로 스크린샷. 네이티브 의존 없음.
 - **Tier 2 — 실제 Tauri 창 (항상 시도):** `xvfb-run`(또는 WSLg 직접) + 빌드된 앱 실행 → `scrot`/imagemagick `import`로 창 캡처. 스크린샷 도구·cargo는 드라이버가 best-effort 설치. **필수 게이트는 아니지만 매 UI Phase에서 반드시 캡처를 시도**하고, 성공 시 추가 증거로 첨부, 환경상 불가 시 🚩FLAG.
 - **분석:** 스크린샷을 vision으로 검증 — `gemini-vision` 스킬(정밀 레이아웃·텍스트) 우선, 가용 불가 시 직접 이미지 판독. DESIGN.md 목업 대비 **구체 단언** 검사:
@@ -137,6 +145,7 @@ PhaseReport = {
   - 한국어 라벨 노출 + 영문 병기 (§8.1)
 
 ### 6.2 게이트 등급
+
 `visual` 게이트는 **required** (UI Phase 2~5). Tier 1이 통과해야 Phase 통과. Tier 2(실제 Tauri 창)는 **매 UI Phase에서 항상 캡처를 시도**하되 필수는 아님 — 성공 시 추가 증거, 불가 시 FLAG(정지 아님).
 
 ---
@@ -145,16 +154,16 @@ PhaseReport = {
 
 > 드라이버는 시작 시 **상태 평가**로 "지금 실제로 통과하는 Phase"를 판정하고 **첫 미완 Phase부터** 진행한다. (현재 repo는 환경 scaffold만 완료 — Phase 0 기능 PoC는 미검증으로 간주.)
 
-| Phase | 핵심 완료기준 (DESIGN) | 자동 게이트 (gates.mjs) | 무인 FLAG |
-|---|---|---|---|
-| **0** Audit/PoC | CLI에서 sample build 로드 → 주요 stat JSON; overlay만으로 동작, vendor 무수정 | 코어 러너 부팅→fixture 실행→stat 키 존재 단언; `git diff --quiet vendor/` | — |
-| **1** Core bridge | 주요 stat이 upstream과 **일치**; malformed 입력에도 UI proc 유지 | golden diff(10~20 fixture, 허용오차), JSON-RPC schema validation, runner crash-isolation 테스트 | — |
-| **2** Shell+Overview | build 열어 Overview 표시; ko/en 토글 | Vitest, `cargo check`, web build, Playwright smoke + **visual(3-pane shell)**, i18n 토글 테스트 | Tier 2 창 캡처 |
-| **3** Items | Items 기능 parity; 한글 붙여넣기 MVP | parser fixture(en+ko), Vitest, Playwright items flow + **visual(3분할·delta 카드)** | 실제 한글 클라 다양성 |
-| **4** Skills/Config/Calcs | 빌드 수정 flow; Calcs 결과 추적 | calc-mutation 테스트, Vitest, Playwright + **visual(Calcs breakdown)** | — |
-| **5** Passive Tree | 트리 기능 parity; 대규모 zoom/pan 성능 | tree-data transform 테스트, 성능 측정(가능 시), Playwright + **visual(노드 그래프·minimap)** | 성능 FPS 정밀측정 |
-| **6** 한국어 | UI 100%; coverage 기준; 한글 paste 성공률 | importer **캐시 fixture** dry-run, coverage 리포트≥MVP 임계, bilingual search 테스트 | 라이브 스크래핑·공식 용어 |
-| **7** Release/자동화 | upstream sync PR 자동; updater rollback; reproducible artifact | CI 스켈레톤 실체화, upstream-sync dry-run, packaging dry-run, updater rollback unit, diagnostic export schema | 서명키·원격 PR·네이티브 서명 |
+| Phase                     | 핵심 완료기준 (DESIGN)                                                        | 자동 게이트 (gates.mjs)                                                                                       | 무인 FLAG                    |
+| ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| **0** Audit/PoC           | CLI에서 sample build 로드 → 주요 stat JSON; overlay만으로 동작, vendor 무수정 | 코어 러너 부팅→fixture 실행→stat 키 존재 단언; `git diff --quiet vendor/`                                     | —                            |
+| **1** Core bridge         | 주요 stat이 upstream과 **일치**; malformed 입력에도 UI proc 유지              | golden diff(10~20 fixture, 허용오차), JSON-RPC schema validation, runner crash-isolation 테스트               | —                            |
+| **2** Shell+Overview      | build 열어 Overview 표시; ko/en 토글                                          | Vitest, `cargo check`, web build, Playwright smoke + **visual(3-pane shell)**, i18n 토글 테스트               | Tier 2 창 캡처               |
+| **3** Items               | Items 기능 parity; 한글 붙여넣기 MVP                                          | parser fixture(en+ko), Vitest, Playwright items flow + **visual(3분할·delta 카드)**                           | 실제 한글 클라 다양성        |
+| **4** Skills/Config/Calcs | 빌드 수정 flow; Calcs 결과 추적                                               | calc-mutation 테스트, Vitest, Playwright + **visual(Calcs breakdown)**                                        | —                            |
+| **5** Passive Tree        | 트리 기능 parity; 대규모 zoom/pan 성능                                        | tree-data transform 테스트, 성능 측정(가능 시), Playwright + **visual(노드 그래프·minimap)**                  | 성능 FPS 정밀측정            |
+| **6** 한국어              | UI 100%; coverage 기준; 한글 paste 성공률                                     | importer **캐시 fixture** dry-run, coverage 리포트≥MVP 임계, bilingual search 테스트                          | 라이브 스크래핑·공식 용어    |
+| **7** Release/자동화      | upstream sync PR 자동; updater rollback; reproducible artifact                | CI 스켈레톤 실체화, upstream-sync dry-run, packaging dry-run, updater rollback unit, diagnostic export schema | 서명키·원격 PR·네이티브 서명 |
 
 (각 셀의 정확한 커맨드는 `gates.mjs`에 구현. 임계치는 DESIGN §8.7 coverage / §16.3 perf budget 사용.)
 
@@ -170,14 +179,14 @@ PhaseReport = {
 
 ## 9. 환경 전제 (프로브 결과)
 
-| 도구 | 상태 | 대응 |
-|---|---|---|
-| Lua 5.1 / LuaJIT | ✅ | 코어 러너 가동 |
-| pnpm / node / npx | ✅ | JS 빌드·Playwright |
-| Xvfb + WSLg | ✅ | 시각 게이트 |
-| luarocks | ✅ / luacheck ❌ | `luarocks install luacheck` |
-| cargo / rustc | ❌ | rustup best-effort 설치, 불가 시 Rust 게이트 FLAG |
-| scrot / imagemagick | ❌ | Tier 2 캡처용 best-effort 설치, 불가 시 Tier 1만 |
+| 도구                | 상태             | 대응                                              |
+| ------------------- | ---------------- | ------------------------------------------------- |
+| Lua 5.1 / LuaJIT    | ✅               | 코어 러너 가동                                    |
+| pnpm / node / npx   | ✅               | JS 빌드·Playwright                                |
+| Xvfb + WSLg         | ✅               | 시각 게이트                                       |
+| luarocks            | ✅ / luacheck ❌ | `luarocks install luacheck`                       |
+| cargo / rustc       | ❌               | rustup best-effort 설치, 불가 시 Rust 게이트 FLAG |
+| scrot / imagemagick | ❌               | Tier 2 캡처용 best-effort 설치, 불가 시 Tier 1만  |
 
 ---
 

@@ -40,28 +40,31 @@ export const PHASES = {
       'warning panel',
       'Korean UI string baseline (ko/en)',
     ],
-    doneCriteria: [
-      '기존 build 파일을 열어 Overview 표시',
-      '한국어/영어 UI toggle 가능',
-    ],
+    doneCriteria: ['기존 build 파일을 열어 Overview 표시', '한국어/영어 UI toggle 가능'],
   },
   3: {
     goal: 'Items tab 재설계 (DESIGN §10.4)',
     tasks: [
-      'item set selector', 'equipped gear grid', 'item library search',
-      'item inspector', 'clipboard import (ko MVP)', 'item equip delta',
-      'custom item creation', 'shared item scope', 'unsupported mod display',
+      'item set selector',
+      'equipped gear grid',
+      'item library search',
+      'item inspector',
+      'clipboard import (ko MVP)',
+      'item equip delta',
+      'custom item creation',
+      'shared item scope',
+      'unsupported mod display',
     ],
-    doneCriteria: [
-      '기존 Items tab 주요 기능 parity',
-      '한국어 아이템 붙여넣기 MVP 지원',
-    ],
+    doneCriteria: ['기존 Items tab 주요 기능 parity', '한국어 아이템 붙여넣기 MVP 지원'],
   },
   4: {
     goal: '계산 조작 + 설명 UI (Skills, Config, Calcs)',
     tasks: [
-      'skill group editor', 'support gem toggle', 'aura/buff/minion controls',
-      'config presets (DESIGN §10.8)', 'Calcs breakdown explorer (§10.7)',
+      'skill group editor',
+      'support gem toggle',
+      'aura/buff/minion controls',
+      'config presets (DESIGN §10.8)',
+      'Calcs breakdown explorer (§10.7)',
       'formula trace mapping',
     ],
     doneCriteria: [
@@ -72,20 +75,25 @@ export const PHASES = {
   5: {
     goal: '고성능 Passive Tree (DESIGN §10.6)',
     tasks: [
-      'TreeData transform', 'canvas/WebGL renderer', 'pan/zoom/minimap',
-      'node search', 'path preview', 'allocation delta', 'jewel/radius support',
+      'TreeData transform',
+      'canvas/WebGL renderer',
+      'pan/zoom/minimap',
+      'node search',
+      'path preview',
+      'allocation delta',
+      'jewel/radius support',
     ],
-    doneCriteria: [
-      '기존 트리 기능 parity',
-      '대규모 zoom/pan 성능 기준 충족 (DESIGN §16.3)',
-    ],
+    doneCriteria: ['기존 트리 기능 parity', '대규모 zoom/pan 성능 기준 충족 (DESIGN §16.3)'],
   },
   6: {
     goal: '실사용 가능한 한국어 PoB2 (DESIGN §8)',
     tasks: [
-      'PoE2DB importer (고정 fixture/캐시 HTML)', 'keyword/item/skill/passive dictionary',
-      'bilingual search index', 'Korean stat/mod parser expansion',
-      'coverage dashboard', 'manual review UI',
+      'PoE2DB importer (고정 fixture/캐시 HTML)',
+      'keyword/item/skill/passive dictionary',
+      'bilingual search index',
+      'Korean stat/mod parser expansion',
+      'coverage dashboard',
+      'manual review UI',
     ],
     doneCriteria: [
       'UI 문자열 100%',
@@ -96,8 +104,13 @@ export const PHASES = {
   7: {
     goal: '유지 가능한 fork로 전환 (Upstream automation & release)',
     tasks: [
-      'upstream sync bot', 'diff classifier (DESIGN §7.3)', 'release channel',
-      'updater (rollback)', 'diagnostic export', 'crash reporting', 'user migration guide',
+      'upstream sync bot',
+      'diff classifier (DESIGN §7.3)',
+      'release channel',
+      'updater (rollback)',
+      'diagnostic export',
+      'crash reporting',
+      'user migration guide',
     ],
     doneCriteria: [
       'upstream update PR 자동 생성 (dry-run)',

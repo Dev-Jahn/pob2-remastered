@@ -1,12 +1,7 @@
 export const meta = {
   name: 'phase-pipeline',
   description: 'Implement one DESIGN.md phase of PoB2 Remastered: decompose → TDD → gate → review',
-  phases: [
-    { title: 'Decompose' },
-    { title: 'Implement' },
-    { title: 'Gate' },
-    { title: 'Review' },
-  ],
+  phases: [{ title: 'Decompose' }, { title: 'Implement' }, { title: 'Gate' }, { title: 'Review' }],
 };
 
 const PHASE = args?.phase;
@@ -22,7 +17,9 @@ const TASKS_SCHEMA = {
         type: 'object',
         required: ['id', 'title', 'deliverable', 'targetFiles', 'deps', 'verifyCmd'],
         properties: {
-          id: { type: 'string' }, title: { type: 'string' }, deliverable: { type: 'string' },
+          id: { type: 'string' },
+          title: { type: 'string' },
+          deliverable: { type: 'string' },
           targetFiles: { type: 'array', items: { type: 'string' } },
           deps: { type: 'array', items: { type: 'string' } },
           verifyCmd: { type: 'string' },
@@ -33,15 +30,26 @@ const TASKS_SCHEMA = {
   },
 };
 const TASK_RESULT_SCHEMA = {
-  type: 'object', required: ['id', 'status'],
-  properties: { id: { type: 'string' }, status: { enum: ['done', 'flagged', 'blocked'] },
-    note: { type: 'string' }, triedFixes: { type: 'number' } },
+  type: 'object',
+  required: ['id', 'status'],
+  properties: {
+    id: { type: 'string' },
+    status: { enum: ['done', 'flagged', 'blocked'] },
+    note: { type: 'string' },
+    triedFixes: { type: 'number' },
+  },
 };
 const REPORT_SCHEMA = {
-  type: 'object', required: ['phase', 'pass'],
-  properties: { phase: { type: 'number' }, pass: { type: 'boolean' },
-    gateJson: { type: 'string' }, flags: { type: 'array', items: { type: 'string' } },
-    blockers: { type: 'array', items: { type: 'string' } }, reviewSummary: { type: 'string' } },
+  type: 'object',
+  required: ['phase', 'pass'],
+  properties: {
+    phase: { type: 'number' },
+    pass: { type: 'boolean' },
+    gateJson: { type: 'string' },
+    flags: { type: 'array', items: { type: 'string' } },
+    blockers: { type: 'array', items: { type: 'string' } },
+    reviewSummary: { type: 'string' },
+  },
 };
 
 phase('Decompose');
@@ -57,11 +65,16 @@ legal/network/secret/visual/gamedata. Keep tasks small and TDD-friendly. Do NOT 
 // Topological order (Kahn). Sequential execution keeps the shared tree consistent.
 function topo(ts) {
   const byId = Object.fromEntries(ts.map((t) => [t.id, t]));
-  const done = new Set(); const order = []; let guard = 0;
+  const done = new Set();
+  const order = [];
+  let guard = 0;
   while (order.length < ts.length && guard++ < ts.length * ts.length) {
     for (const t of ts) {
       if (done.has(t.id)) continue;
-      if ((t.deps || []).every((d) => done.has(d) || !byId[d])) { order.push(t); done.add(t.id); }
+      if ((t.deps || []).every((d) => done.has(d) || !byId[d])) {
+        order.push(t);
+        done.add(t.id);
+      }
     }
   }
   for (const t of ts) if (!done.has(t.id)) order.push(t); // cycle fallback
@@ -102,12 +115,23 @@ const review = await agent(
   `Adversarially review the diff for phase ${PHASE} of PoB2 Remastered (git diff against the phase's base).
 Check: correctness vs ./DESIGN.md and PHASES[${PHASE}].doneCriteria, NO-FALLBACK (no fake passes/stubs masquerading as done),
 no vendor/ edits, test quality. Only report REAL issues. If you find blocking issues, fix them via TDD and commit. Then summarize.`,
-  { label: `review:p${PHASE}`, phase: 'Review', schema: { type: 'object', required: ['summary', 'blocking'], properties: { summary: { type: 'string' }, blocking: { type: 'boolean' } } } },
+  {
+    label: `review:p${PHASE}`,
+    phase: 'Review',
+    schema: {
+      type: 'object',
+      required: ['summary', 'blocking'],
+      properties: { summary: { type: 'string' }, blocking: { type: 'boolean' } },
+    },
+  },
 );
 
 return {
   phase: PHASE,
-  pass: !!(gate && gate.pass) && !(review && review.blocking) && !taskResults.some((r) => r && r.status === 'blocked'),
+  pass:
+    !!(gate && gate.pass) &&
+    !(review && review.blocking) &&
+    !taskResults.some((r) => r && r.status === 'blocked'),
   taskResults,
   gate,
   review,

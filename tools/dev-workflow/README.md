@@ -10,9 +10,11 @@ Autonomous, DESIGN.md-driven build pipeline for PoB2 Remastered.
 - `PROGRESS.md` — driver ledger.
 
 ## Run one phase
+
 Invoke the Workflow tool: `phase-pipeline.mjs` with `args: { phase: 1 }`.
 
 ## Autonomous drive (Phase 0→7)
+
 `/pob-dev auto` — main agent assesses state, then loops phases: run engine → re-run gate for evidence → squash-merge + push → update PROGRESS.md → next. Stops only on a self-unfixable technical blocker.
 
 See `docs/superpowers/specs/2026-06-01-dev-workflow-design.md`.

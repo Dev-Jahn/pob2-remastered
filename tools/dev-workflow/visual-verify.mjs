@@ -23,13 +23,19 @@ export function captureTauri(bin, out) {
   const shooter = firstAvailable(['import', 'scrot', 'gnome-screenshot']);
   if (!shooter) return { ok: false, reason: 'no screenshot tool (import/scrot/gnome-screenshot)' };
   const hasXvfb = spawnSync('bash', ['-lc', 'command -v xvfb-run']).status === 0;
-  const shotCmd = shooter === 'import' ? `import -window root ${out}`
-    : shooter === 'scrot' ? `scrot ${out}` : `gnome-screenshot -f ${out}`;
+  const shotCmd =
+    shooter === 'import'
+      ? `import -window root ${out}`
+      : shooter === 'scrot'
+        ? `scrot ${out}`
+        : `gnome-screenshot -f ${out}`;
   const inner = `("${bin}" & APP=$!; sleep 6; ${shotCmd}; kill $APP 2>/dev/null)`;
-  const cmd = hasXvfb ? `xvfb-run -a --server-args="-screen 0 1366x768x24" bash -lc '${inner}'`
+  const cmd = hasXvfb
+    ? `xvfb-run -a --server-args="-screen 0 1366x768x24" bash -lc '${inner}'`
     : `bash -lc '${inner}'`; // fall back to live $DISPLAY/WSLg
   const p = spawnSync('bash', ['-lc', cmd], { encoding: 'utf8', timeout: 120000 });
-  if (p.status !== 0) return { ok: false, reason: `capture failed exit=${p.status} ${p.stderr || ''}`.trim() };
+  if (p.status !== 0)
+    return { ok: false, reason: `capture failed exit=${p.status} ${p.stderr || ''}`.trim() };
   return { ok: true, out };
 }
 
@@ -41,7 +47,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`OK ${b}`);
   } else if (mode === 'tauri') {
     const r = captureTauri(a, b);
-    if (!r.ok) { console.log(`TIER2_UNAVAILABLE: ${r.reason}`); process.exit(3); }
+    if (!r.ok) {
+      console.log(`TIER2_UNAVAILABLE: ${r.reason}`);
+      process.exit(3);
+    }
     console.log(`OK ${b}`);
   } else {
     console.error('usage: visual-verify.mjs url <url> <out.png> [WxH] | tauri <bin> <out.png>');

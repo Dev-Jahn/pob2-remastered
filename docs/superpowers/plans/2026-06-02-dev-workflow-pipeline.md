@@ -39,6 +39,7 @@ Responsibilities: **data** (`phases.mjs`, `gates.mjs`) is separate from **mechan
 ## Task 1: Workspace package + scaffolding
 
 **Files:**
+
 - Create: `tools/dev-workflow/package.json`
 
 - [ ] **Step 1: Create the package manifest**
@@ -64,10 +65,12 @@ Responsibilities: **data** (`phases.mjs`, `gates.mjs`) is separate from **mechan
 - [ ] **Step 2: Install + fetch Playwright chromium**
 
 Run:
+
 ```bash
 pnpm install
 pnpm --filter @pob2/dev-workflow exec playwright install chromium
 ```
+
 Expected: install completes; chromium downloaded (or a clear network error to flag).
 
 - [ ] **Step 3: Commit**
@@ -82,6 +85,7 @@ git commit -m "chore(dev-workflow): add workspace package + playwright"
 ## Task 2: Phase spec data (`phases.mjs`)
 
 **Files:**
+
 - Create: `tools/dev-workflow/phases.mjs`
 - Test: `tools/dev-workflow/test/phases.test.mjs`
 
@@ -94,8 +98,11 @@ import { PHASES } from '../phases.mjs';
 
 describe('PHASES', () => {
   it('covers phases 0..7', () => {
-    expect(Object.keys(PHASES).map(Number).sort((a, b) => a - b))
-      .toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(
+      Object.keys(PHASES)
+        .map(Number)
+        .sort((a, b) => a - b),
+    ).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   });
   it('every phase has goal + non-empty tasks + non-empty doneCriteria', () => {
     for (const [id, p] of Object.entries(PHASES)) {
@@ -157,28 +164,31 @@ export const PHASES = {
       'warning panel',
       'Korean UI string baseline (ko/en)',
     ],
-    doneCriteria: [
-      '기존 build 파일을 열어 Overview 표시',
-      '한국어/영어 UI toggle 가능',
-    ],
+    doneCriteria: ['기존 build 파일을 열어 Overview 표시', '한국어/영어 UI toggle 가능'],
   },
   3: {
     goal: 'Items tab 재설계 (DESIGN §10.4)',
     tasks: [
-      'item set selector', 'equipped gear grid', 'item library search',
-      'item inspector', 'clipboard import (ko MVP)', 'item equip delta',
-      'custom item creation', 'shared item scope', 'unsupported mod display',
+      'item set selector',
+      'equipped gear grid',
+      'item library search',
+      'item inspector',
+      'clipboard import (ko MVP)',
+      'item equip delta',
+      'custom item creation',
+      'shared item scope',
+      'unsupported mod display',
     ],
-    doneCriteria: [
-      '기존 Items tab 주요 기능 parity',
-      '한국어 아이템 붙여넣기 MVP 지원',
-    ],
+    doneCriteria: ['기존 Items tab 주요 기능 parity', '한국어 아이템 붙여넣기 MVP 지원'],
   },
   4: {
     goal: '계산 조작 + 설명 UI (Skills, Config, Calcs)',
     tasks: [
-      'skill group editor', 'support gem toggle', 'aura/buff/minion controls',
-      'config presets (DESIGN §10.8)', 'Calcs breakdown explorer (§10.7)',
+      'skill group editor',
+      'support gem toggle',
+      'aura/buff/minion controls',
+      'config presets (DESIGN §10.8)',
+      'Calcs breakdown explorer (§10.7)',
       'formula trace mapping',
     ],
     doneCriteria: [
@@ -189,20 +199,25 @@ export const PHASES = {
   5: {
     goal: '고성능 Passive Tree (DESIGN §10.6)',
     tasks: [
-      'TreeData transform', 'canvas/WebGL renderer', 'pan/zoom/minimap',
-      'node search', 'path preview', 'allocation delta', 'jewel/radius support',
+      'TreeData transform',
+      'canvas/WebGL renderer',
+      'pan/zoom/minimap',
+      'node search',
+      'path preview',
+      'allocation delta',
+      'jewel/radius support',
     ],
-    doneCriteria: [
-      '기존 트리 기능 parity',
-      '대규모 zoom/pan 성능 기준 충족 (DESIGN §16.3)',
-    ],
+    doneCriteria: ['기존 트리 기능 parity', '대규모 zoom/pan 성능 기준 충족 (DESIGN §16.3)'],
   },
   6: {
     goal: '실사용 가능한 한국어 PoB2 (DESIGN §8)',
     tasks: [
-      'PoE2DB importer (고정 fixture/캐시 HTML)', 'keyword/item/skill/passive dictionary',
-      'bilingual search index', 'Korean stat/mod parser expansion',
-      'coverage dashboard', 'manual review UI',
+      'PoE2DB importer (고정 fixture/캐시 HTML)',
+      'keyword/item/skill/passive dictionary',
+      'bilingual search index',
+      'Korean stat/mod parser expansion',
+      'coverage dashboard',
+      'manual review UI',
     ],
     doneCriteria: [
       'UI 문자열 100%',
@@ -213,8 +228,13 @@ export const PHASES = {
   7: {
     goal: '유지 가능한 fork로 전환 (Upstream automation & release)',
     tasks: [
-      'upstream sync bot', 'diff classifier (DESIGN §7.3)', 'release channel',
-      'updater (rollback)', 'diagnostic export', 'crash reporting', 'user migration guide',
+      'upstream sync bot',
+      'diff classifier (DESIGN §7.3)',
+      'release channel',
+      'updater (rollback)',
+      'diagnostic export',
+      'crash reporting',
+      'user migration guide',
     ],
     doneCriteria: [
       'upstream update PR 자동 생성 (dry-run)',
@@ -242,6 +262,7 @@ git commit -m "feat(dev-workflow): DESIGN-derived phase spec data"
 ## Task 3: Gate definitions (`gates.mjs`)
 
 **Files:**
+
 - Create: `tools/dev-workflow/gates.mjs`
 - Test: `tools/dev-workflow/test/gates.test.mjs`
 
@@ -293,34 +314,134 @@ const BASE = [
   { name: 'typecheck', kind: 'shell', required: true, cmd: `${REPO} typecheck` },
 ];
 const visual = (name, screen) => ({
-  name: `visual:${name}`, kind: 'visual', required: true,
+  name: `visual:${name}`,
+  kind: 'visual',
+  required: true,
   cmd: `node tools/dev-workflow/visual-verify.mjs url http://localhost:5173/${screen} /tmp/pob-${name}.png 1366x768`,
 });
 
 export const GATES = {
   0: [
-    { name: 'vendor-clean', kind: 'shell', required: true, cmd: 'git diff --quiet vendor/PathOfBuilding-PoE2 && echo CLEAN' },
-    { name: 'core-runner-boot', kind: 'shell', required: true, cmd: 'node tools/dev-workflow/run-gate.mjs --selfcheck || lua overlays/lua/headless_bootstrap.lua --print-stats' },
+    {
+      name: 'vendor-clean',
+      kind: 'shell',
+      required: true,
+      cmd: 'git diff --quiet vendor/PathOfBuilding-PoE2 && echo CLEAN',
+    },
+    {
+      name: 'core-runner-boot',
+      kind: 'shell',
+      required: true,
+      cmd: 'node tools/dev-workflow/run-gate.mjs --selfcheck || lua overlays/lua/headless_bootstrap.lua --print-stats',
+    },
   ],
   1: [
     ...BASE,
-    { name: 'golden-parity', kind: 'golden', required: true, cmd: 'pnpm --filter @pob2/core-client test golden' },
+    {
+      name: 'golden-parity',
+      kind: 'golden',
+      required: true,
+      cmd: 'pnpm --filter @pob2/core-client test golden',
+    },
     { name: 'rpc-schema', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/schema test' },
-    { name: 'crash-isolation', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/core-client test crash' },
+    {
+      name: 'crash-isolation',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/core-client test crash',
+    },
   ],
   2: [
     ...BASE,
-    { name: 'cargo-check', kind: 'shell', required: true, cmd: 'cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml' },
+    {
+      name: 'cargo-check',
+      kind: 'shell',
+      required: true,
+      cmd: 'cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml',
+    },
     { name: 'web-build', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/desktop build' },
     { name: 'ui-unit', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/ui test' },
     visual('overview', ''),
-    { name: 'i18n-toggle', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/desktop test i18n' },
+    {
+      name: 'i18n-toggle',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/desktop test i18n',
+    },
   ],
-  3: [...BASE, { name: 'parser-fixtures', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/core-client test parser' }, { name: 'items-unit', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/ui test items' }, visual('items', 'items')],
-  4: [...BASE, { name: 'calc-mutation', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/ui test calcs' }, visual('calcs', 'calcs')],
-  5: [...BASE, { name: 'tree-transform', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/ui test tree' }, visual('tree', 'tree')],
-  6: [...BASE, { name: 'importer-dryrun', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/localization test importer' }, { name: 'coverage', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/localization run coverage:check' }, { name: 'bilingual-search', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/localization test search' }],
-  7: [...BASE, { name: 'sync-dryrun', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/upstream-sync run dry-run' }, { name: 'updater-rollback', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/desktop test updater' }, { name: 'diagnostic-schema', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/schema test diagnostic' }],
+  3: [
+    ...BASE,
+    {
+      name: 'parser-fixtures',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/core-client test parser',
+    },
+    { name: 'items-unit', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/ui test items' },
+    visual('items', 'items'),
+  ],
+  4: [
+    ...BASE,
+    {
+      name: 'calc-mutation',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/ui test calcs',
+    },
+    visual('calcs', 'calcs'),
+  ],
+  5: [
+    ...BASE,
+    {
+      name: 'tree-transform',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/ui test tree',
+    },
+    visual('tree', 'tree'),
+  ],
+  6: [
+    ...BASE,
+    {
+      name: 'importer-dryrun',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/localization test importer',
+    },
+    {
+      name: 'coverage',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/localization run coverage:check',
+    },
+    {
+      name: 'bilingual-search',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/localization test search',
+    },
+  ],
+  7: [
+    ...BASE,
+    {
+      name: 'sync-dryrun',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/upstream-sync run dry-run',
+    },
+    {
+      name: 'updater-rollback',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/desktop test updater',
+    },
+    {
+      name: 'diagnostic-schema',
+      kind: 'shell',
+      required: true,
+      cmd: 'pnpm --filter @pob2/schema test diagnostic',
+    },
+  ],
 };
 ```
 
@@ -341,6 +462,7 @@ git commit -m "feat(dev-workflow): per-phase verification gate definitions"
 ## Task 4: Gate runner CLI (`run-gate.mjs`)
 
 **Files:**
+
 - Create: `tools/dev-workflow/run-gate.mjs`
 - Test: `tools/dev-workflow/test/run-gate.test.mjs`
 
@@ -355,9 +477,12 @@ import { classify, runGate } from '../run-gate.mjs';
 
 describe('classify', () => {
   it('exit 0 → pass', () => expect(classify(0, '', '')).toBe('pass'));
-  it('exit 127 → env-missing', () => expect(classify(127, '', 'bash: foo: command not found')).toBe('env-missing'));
-  it('not-found stderr → env-missing', () => expect(classify(1, '', 'cargo: No such file or directory')).toBe('env-missing'));
-  it('other non-zero → fail', () => expect(classify(1, '', 'AssertionError: expected 5 got 4')).toBe('fail'));
+  it('exit 127 → env-missing', () =>
+    expect(classify(127, '', 'bash: foo: command not found')).toBe('env-missing'));
+  it('not-found stderr → env-missing', () =>
+    expect(classify(1, '', 'cargo: No such file or directory')).toBe('env-missing'));
+  it('other non-zero → fail', () =>
+    expect(classify(1, '', 'AssertionError: expected 5 got 4')).toBe('fail'));
 });
 
 describe('runGate', () => {
@@ -371,7 +496,14 @@ describe('runGate', () => {
     expect(r.pass).toBe(true); // env-missing is non-blocking
   });
   it('required real failure → overall fail', async () => {
-    const r = await runGate([{ name: 'bad', kind: 'shell', required: true, cmd: 'sh -c "echo AssertionError 1>&2; exit 1"' }]);
+    const r = await runGate([
+      {
+        name: 'bad',
+        kind: 'shell',
+        required: true,
+        cmd: 'sh -c "echo AssertionError 1>&2; exit 1"',
+      },
+    ]);
     expect(r.results[0].status).toBe('fail');
     expect(r.pass).toBe(false);
   });
@@ -406,8 +538,14 @@ export async function runGate(gates) {
     const stderr = (p.stderr || '') + (p.error ? String(p.error) : '');
     const status = classify(code, stdout, stderr);
     const tail = (s) => s.split('\n').slice(-12).join('\n');
-    return { name: g.name, cmd: g.cmd, kind: g.kind, required: g.required, status,
-             evidence: `exit=${code}\n${tail(stdout)}\n${tail(stderr)}`.trim() };
+    return {
+      name: g.name,
+      cmd: g.cmd,
+      kind: g.kind,
+      required: g.required,
+      status,
+      evidence: `exit=${code}\n${tail(stdout)}\n${tail(stderr)}`.trim(),
+    };
   });
   const pass = !results.some((r) => r.required && r.status === 'fail');
   return { pass, results };
@@ -416,9 +554,15 @@ export async function runGate(gates) {
 // CLI: node run-gate.mjs <phase>
 if (import.meta.url === `file://${process.argv[1]}`) {
   const phase = process.argv[2];
-  if (phase === '--selfcheck') { console.log('run-gate ok'); process.exit(0); }
+  if (phase === '--selfcheck') {
+    console.log('run-gate ok');
+    process.exit(0);
+  }
   const gates = GATES[phase];
-  if (!gates) { console.error(`no gates for phase ${phase}`); process.exit(2); }
+  if (!gates) {
+    console.error(`no gates for phase ${phase}`);
+    process.exit(2);
+  }
   const r = await runGate(gates);
   console.log(JSON.stringify({ phase: Number(phase), ...r }, null, 2));
   process.exit(r.pass ? 0 : 1);
@@ -442,13 +586,15 @@ git commit -m "feat(dev-workflow): evidence-based gate runner with env-missing c
 ## Task 5: Visual verification CLI (`visual-verify.mjs`)
 
 **Files:**
+
 - Create: `tools/dev-workflow/visual-verify.mjs`
 - Test: `tools/dev-workflow/test/visual-verify.test.mjs`
 
 **Contract:**
+
 - `node visual-verify.mjs url <url> <out.png> [WxH]` — Playwright chromium screenshots a URL (Tier 1). Accepts `file://` URLs.
 - `node visual-verify.mjs tauri <bin> <out.png>` — Tier 2: launches a binary under `xvfb-run` (or current `$DISPLAY`/WSLg), waits, captures the active window via `import`/`scrot`/`gnome-screenshot` (first available); on any failure prints `TIER2_UNAVAILABLE: <reason>` and exits 3 (driver → 🚩flag, never blocks).
-- Vision *analysis* of the PNG is performed by the calling agent (gemini-vision skill or direct image read), not here.
+- Vision _analysis_ of the PNG is performed by the calling agent (gemini-vision skill or direct image read), not here.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -508,13 +654,19 @@ export function captureTauri(bin, out) {
   const shooter = firstAvailable(['import', 'scrot', 'gnome-screenshot']);
   if (!shooter) return { ok: false, reason: 'no screenshot tool (import/scrot/gnome-screenshot)' };
   const hasXvfb = spawnSync('bash', ['-lc', 'command -v xvfb-run']).status === 0;
-  const shotCmd = shooter === 'import' ? `import -window root ${out}`
-    : shooter === 'scrot' ? `scrot ${out}` : `gnome-screenshot -f ${out}`;
+  const shotCmd =
+    shooter === 'import'
+      ? `import -window root ${out}`
+      : shooter === 'scrot'
+        ? `scrot ${out}`
+        : `gnome-screenshot -f ${out}`;
   const inner = `("${bin}" & APP=$!; sleep 6; ${shotCmd}; kill $APP 2>/dev/null)`;
-  const cmd = hasXvfb ? `xvfb-run -a --server-args="-screen 0 1366x768x24" bash -lc '${inner}'`
+  const cmd = hasXvfb
+    ? `xvfb-run -a --server-args="-screen 0 1366x768x24" bash -lc '${inner}'`
     : `bash -lc '${inner}'`; // fall back to live $DISPLAY/WSLg
   const p = spawnSync('bash', ['-lc', cmd], { encoding: 'utf8', timeout: 120000 });
-  if (p.status !== 0) return { ok: false, reason: `capture failed exit=${p.status} ${p.stderr || ''}`.trim() };
+  if (p.status !== 0)
+    return { ok: false, reason: `capture failed exit=${p.status} ${p.stderr || ''}`.trim() };
   return { ok: true, out };
 }
 
@@ -526,7 +678,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`OK ${b}`);
   } else if (mode === 'tauri') {
     const r = captureTauri(a, b);
-    if (!r.ok) { console.log(`TIER2_UNAVAILABLE: ${r.reason}`); process.exit(3); }
+    if (!r.ok) {
+      console.log(`TIER2_UNAVAILABLE: ${r.reason}`);
+      process.exit(3);
+    }
     console.log(`OK ${b}`);
   } else {
     console.error('usage: visual-verify.mjs url <url> <out.png> [WxH] | tauri <bin> <out.png>');
@@ -552,6 +707,7 @@ git commit -m "feat(dev-workflow): Playwright Tier-1 + Xvfb/WSLg Tier-2 visual c
 ## Task 6: Orchestration engine (`phase-pipeline.mjs`, Workflow script)
 
 **Files:**
+
 - Create: `tools/dev-workflow/phase-pipeline.mjs`
 
 This is a **Workflow tool script** (sandbox: no fs/import). It orchestrates agents that have real tools. It is validated by syntax + a real Phase-0 invocation (Task 8), not Vitest.
@@ -692,6 +848,7 @@ git commit -m "feat(dev-workflow): reusable per-phase orchestration Workflow eng
 ## Task 7: Driver ledger, README, slash command
 
 **Files:**
+
 - Create: `tools/dev-workflow/PROGRESS.md`
 - Create: `tools/dev-workflow/README.md`
 - Create: `.claude/commands/pob-dev.md`
@@ -705,25 +862,28 @@ git commit -m "feat(dev-workflow): reusable per-phase orchestration Workflow eng
 
 **Mode:** 완전 무인 (stop only on self-unfixable technical blockers).
 **Start:** Phase 0 functional PoC → Phase 7.
-**Git:** feat/phase-N-* → squash-merge to main → push origin.
+**Git:** feat/phase-N-\* → squash-merge to main → push origin.
 
 ## State
+
 - Current phase: _to be assessed_
 - Last commit: _none yet (pipeline build in progress)_
 
 ## Phase ledger
-| Phase | Status | Gate evidence | 🚩Flags | Blockers |
-|---|---|---|---|---|
-| 0 | pending | | | |
-| 1 | pending | | | |
-| 2 | pending | | | |
-| 3 | pending | | | |
-| 4 | pending | | | |
-| 5 | pending | | | |
-| 6 | pending | | | |
-| 7 | pending | | | |
+
+| Phase | Status  | Gate evidence | 🚩Flags | Blockers |
+| ----- | ------- | ------------- | ------- | -------- |
+| 0     | pending |               |         |          |
+| 1     | pending |               |         |          |
+| 2     | pending |               |         |          |
+| 3     | pending |               |         |          |
+| 4     | pending |               |         |          |
+| 5     | pending |               |         |          |
+| 6     | pending |               |         |          |
+| 7     | pending |               |         |          |
 
 ## 🚩 Flag log
+
 _(human-gate decisions made autonomously — review later)_
 ```
 
@@ -742,9 +902,11 @@ Autonomous, DESIGN.md-driven build pipeline for PoB2 Remastered.
 - `PROGRESS.md` — driver ledger.
 
 ## Run one phase
+
 Invoke the Workflow tool: `phase-pipeline.mjs` with `args: { phase: 1 }`.
 
 ## Autonomous drive (Phase 0→7)
+
 `/pob-dev auto` — main agent assesses state, then loops phases: run engine → re-run gate for evidence → squash-merge + push → update PROGRESS.md → next. Stops only on a self-unfixable technical blocker.
 
 See `docs/superpowers/specs/2026-06-01-dev-workflow-design.md`.
@@ -762,6 +924,7 @@ Run the dev-workflow pipeline for PoB2 Remastered.
 Argument: `$ARGUMENTS` (a phase number `0`..`7`, or `auto` for full Phase 0→7).
 
 Steps:
+
 1. Read `tools/dev-workflow/PROGRESS.md` for current state.
 2. For the target phase(s), invoke the Workflow tool with script `tools/dev-workflow/phase-pipeline.mjs` and `args:{phase:N}`.
 3. After the engine returns, RE-RUN the gate yourself for evidence: `node tools/dev-workflow/run-gate.mjs N`.
@@ -787,11 +950,13 @@ git commit -m "feat(dev-workflow): driver ledger, README, /pob-dev command"
 - [ ] **Step 1: Full workspace sanity**
 
 Run:
+
 ```bash
 pnpm install
 pnpm --filter @pob2/dev-workflow test
 pnpm format:check && pnpm typecheck
 ```
+
 Expected: all dev-workflow tests pass; repo format/typecheck clean (or pre-existing scaffold state).
 
 - [ ] **Step 2: Gate runner smoke against Phase 0**
