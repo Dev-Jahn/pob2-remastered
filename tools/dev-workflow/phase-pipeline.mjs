@@ -103,12 +103,24 @@ Otherwise return status 'done'. verifyCmd: ${t.verifyCmd}`,
 phase('Gate');
 const gate = await agent(
   `Run the evidence-based gate for phase ${PHASE} of PoB2 Remastered and report the verdict.
-Run: \`node tools/dev-workflow/run-gate.mjs ${PHASE}\` and capture its JSON.
-For every gate of kind 'visual': run \`node tools/dev-workflow/visual-verify.mjs url <screen-url> <out.png>\` (Tier 1, REQUIRED),
-THEN ALWAYS also attempt Tier 2 \`node tools/dev-workflow/visual-verify.mjs tauri <built-binary> <out2.png>\` (NOT required — flag if TIER2_UNAVAILABLE).
-Analyze each screenshot with the gemini-vision skill (or read the PNG directly) and assert the DESIGN.md §10 layout for that screen.
-If a REQUIRED gate has status 'fail' (real failure, not env-missing/visual-tier2), fix the underlying code (TDD) and re-run, up to 3 rounds.
-Return: pass (true unless a required gate still fails), gateJson (the run-gate output), flags (env-missing + visual notes), blockers.`,
+
+1. SHELL/GOLDEN gates: run \`node tools/dev-workflow/run-gate.mjs ${PHASE}\` and capture its JSON.
+   A required gate with status 'fail' (a real failure, NOT env-missing) is a code defect — fix it
+   via TDD and re-run, up to 3 rounds. env-missing is a non-blocking flag.
+
+2. VISUAL gates: read VISUAL[${PHASE}] from tools/dev-workflow/gates.mjs (may be undefined/empty — then skip).
+   For each screen { name, route, assert[] }:
+   - Build + serve the web app (e.g. \`pnpm --filter @pob2/desktop build\` then serve the dist on a
+     free local port, or start the dev server). Wait until the port actually responds.
+   - Tier 1 (REQUIRED): \`node tools/dev-workflow/visual-verify.mjs url http://localhost:<port><route> /tmp/pob-${PHASE}-<name>.png 1366x768\`.
+   - Tier 2 (ALWAYS ATTEMPT, not required): build/run the Tauri binary and
+     \`node tools/dev-workflow/visual-verify.mjs tauri <binary> /tmp/pob-${PHASE}-<name>-tauri.png\` (flag if TIER2_UNAVAILABLE).
+   - Analyze each screenshot with the gemini-vision skill and assert EVERY fact in that screen's
+     \`assert\` list. A blank/error page or any failed assertion is a visual FAIL — fix the UI via
+     TDD and re-screenshot, up to 3 rounds. Stop the server when done.
+
+Return: pass = true ONLY if all required shell/golden gates AND all Tier-1 visual asserts pass.
+gateJson = the run-gate output; flags = env-missing + Tier-2 notes + gemini-vision caveats; blockers = anything unfixable.`,
   { label: `gate:p${PHASE}`, phase: 'Gate', schema: REPORT_SCHEMA },
 );
 

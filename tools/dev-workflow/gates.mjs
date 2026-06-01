@@ -1,7 +1,12 @@
 // gates.mjs — each phase's doneCriteria mapped to concrete verification commands.
-// kind: 'shell' (exit code) | 'golden' (calc diff) | 'visual' (screenshot+vision).
-// required:false gates inform but never block. Commands target artifacts the phase builds;
-// run-gate.mjs classifies a missing tool/file as 'env-missing' (flag, non-blocking) vs 'fail'.
+// kind: 'shell' (exit code) | 'golden' (calc diff). required:false gates inform but never block.
+// Commands target artifacts the phase builds; run-gate.mjs classifies a missing tool/file as
+// 'env-missing' (flag, non-blocking) vs 'fail'.
+//
+// Visual layout verification is NOT a run-gate shell gate: asserting "the screen matches DESIGN
+// §10" needs a served app + an LLM (gemini-vision), which a headless exit-code gate cannot do.
+// Those screens live in VISUAL (below) and are verified by the phase-pipeline gate-agent and the
+// driver via serve → Playwright screenshot → gemini-vision (spec §6).
 const REPO = 'pnpm -w';
 const BASE = [
   { name: 'format', kind: 'shell', required: true, cmd: `${REPO} format:check` },
@@ -15,12 +20,6 @@ const BASE = [
     cmd: 'pnpm --filter @pob2/dev-workflow test',
   },
 ];
-const visual = (name, screen) => ({
-  name: `visual:${name}`,
-  kind: 'visual',
-  required: true,
-  cmd: `node tools/dev-workflow/visual-verify.mjs url http://localhost:5173/${screen} /tmp/pob-${name}.png 1366x768`,
-});
 
 export const GATES = {
   0: [
@@ -66,7 +65,6 @@ export const GATES = {
     },
     { name: 'web-build', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/desktop build' },
     { name: 'ui-unit', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/ui test' },
-    visual('overview', ''),
     {
       name: 'i18n-toggle',
       kind: 'shell',
@@ -83,7 +81,6 @@ export const GATES = {
       cmd: 'pnpm --filter @pob2/core-client test parser',
     },
     { name: 'items-unit', kind: 'shell', required: true, cmd: 'pnpm --filter @pob2/ui test items' },
-    visual('items', 'items'),
   ],
   4: [
     ...BASE,
@@ -93,7 +90,6 @@ export const GATES = {
       required: true,
       cmd: 'pnpm --filter @pob2/ui test calcs',
     },
-    visual('calcs', 'calcs'),
   ],
   5: [
     ...BASE,
@@ -103,7 +99,6 @@ export const GATES = {
       required: true,
       cmd: 'pnpm --filter @pob2/ui test tree',
     },
-    visual('tree', 'tree'),
   ],
   6: [
     ...BASE,
@@ -145,6 +140,51 @@ export const GATES = {
       kind: 'shell',
       required: true,
       cmd: 'pnpm --filter @pob2/schema test diagnostic',
+    },
+  ],
+};
+
+// Screens to verify visually per phase (DESIGN §10). The route is relative to the app's served
+// root. Verified by gemini-vision (gate-agent + driver), NOT by run-gate. `assert` lists the
+// concrete layout facts the screenshot must satisfy.
+export const VISUAL = {
+  2: [
+    {
+      name: 'overview',
+      route: '/',
+      assert: [
+        '3-pane shell: left nav (Overview/Skills/Items/…), center workspace, right inspector (§10.2)',
+        'Overview stat cards: offence (DPS/avg hit/crit) + defence (life/ES/res/EHP) + resource + warnings (§10.3)',
+        'Korean labels visible with English aliases; ko/en toggle present (§8.1)',
+      ],
+    },
+  ],
+  3: [
+    {
+      name: 'items',
+      route: '/items',
+      assert: [
+        'Items 3-region: equipped gear grid | item library search | inspector (§10.4)',
+        'Item cards show rarity color, base type, and +DPS/-EHP delta chips',
+      ],
+    },
+  ],
+  4: [
+    {
+      name: 'calcs',
+      route: '/calcs',
+      assert: [
+        'Calcs breakdown tree: Summary/Offence/Defence/Resource with source list + formula trace (§10.7)',
+      ],
+    },
+  ],
+  5: [
+    {
+      name: 'tree',
+      route: '/tree',
+      assert: [
+        'Passive tree canvas renders nodes + edges; minimap present; node search box (§10.6)',
+      ],
     },
   ],
 };
