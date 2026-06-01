@@ -53,3 +53,56 @@ export { CommandPalette } from './command-palette/CommandPalette.js';
 export type { CommandPaletteProps } from './command-palette/CommandPalette.js';
 export { filterCommands, matchCommand, commandTokens } from './command-palette/search.js';
 export type { Command } from './command-palette/search.js';
+
+// Items view-models (DESIGN §10.4 Items tab, §6.4 NO-FALLBACK). Pure, framework-
+// free transforms: the slot-ordered equipped-gear grid (Item card model with
+// rarity color key, baseType, requirement chips, mod summary, +DPS/-EHP delta
+// chips), the ko↔en item-library search/filter/sort, and the equip-delta chips.
+export { buildEquippedGridModel, EQUIP_SLOT_ORDER } from './items/equipped-model.js';
+export type {
+  EquipSlot,
+  RequirementChip,
+  ItemCardModel,
+  EquippedItemCard,
+  EquippedGridModel,
+  EquipDeltaByItemId,
+} from './items/equipped-model.js';
+export { filterItems } from './items/library-search.js';
+export type { LibraryItem, ItemFilterQuery, ItemSort } from './items/library-search.js';
+export { buildEquipDeltaModel } from './items/delta-model.js';
+export type { DeltaDirection, DeltaChip, EquipDeltaModel } from './items/delta-model.js';
+
+// Items components: render the §10.4 view-models in the 3-region layout. ItemsPanel
+// (equipped grid | library search | inspector) + its toolbar, ItemCard (rarity
+// data-attr, icon placeholder, base type, requirement chips, mod summary, +DPS/-EHP
+// delta chips), ItemLibrary (search + slot/type/req filters + virtualization-ready
+// result list), ItemInspector (원문/한국어 텍스트, parsed/unsupported badges with
+// icon+text per §11.3, roll-range editor placeholder, slot selector, action group),
+// and ItemSetSelector (header item-set picker).
+export { ItemsPanel } from './items/ItemsPanel.js';
+export type { ItemsPanelProps } from './items/ItemsPanel.js';
+export { ItemCard } from './items/ItemCard.js';
+export type { ItemCardProps } from './items/ItemCard.js';
+export { ItemLibrary } from './items/ItemLibrary.js';
+export type { ItemLibraryProps } from './items/ItemLibrary.js';
+export { ItemInspector } from './items/ItemInspector.js';
+export type { ItemInspectorProps, InspectedItem } from './items/ItemInspector.js';
+export { ItemSetSelector } from './items/ItemSetSelector.js';
+export type { ItemSetSelectorProps, ItemSetOption } from './items/ItemSetSelector.js';
+
+// Items container hook + components (DESIGN §10.4 Items tab redesign, §8.6 ko/en
+// clipboard paste, §6.3 items.parseClipboard/createCustom, §5.1 injectable client):
+// useItemsTab (clipboard import → inspector, custom item creation, shared item
+// scope filter), ClipboardImport (paste textarea + import button → inspector with
+// parsed/unsupported split), CustomItemForm (base select + mod input → onCreate).
+export { useItemsTab } from './items/useItemsTab.js';
+export type {
+  ItemsClient,
+  LibraryScope,
+  UseItemsTabOptions,
+  UseItemsTabResult,
+} from './items/useItemsTab.js';
+export { ClipboardImport } from './items/ClipboardImport.js';
+export type { ClipboardImportProps } from './items/ClipboardImport.js';
+export { CustomItemForm } from './items/CustomItemForm.js';
+export type { CustomItemFormProps, ItemBaseOption } from './items/CustomItemForm.js';

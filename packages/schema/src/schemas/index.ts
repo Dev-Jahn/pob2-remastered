@@ -93,6 +93,65 @@ const buildStateSchema = {
 
 const localeSchema = { type: 'string', enum: ['ko-KR', 'en-US'] } as const satisfies JSONSchema;
 
+/** Item attribute/level requirements card block (mirrors the Lua serializer). */
+const itemRequirementsSchema = {
+  type: 'object',
+  required: ['level', 'str', 'dex', 'int'],
+  properties: {
+    level: { type: 'number' },
+    str: { type: 'number' },
+    dex: { type: 'number' },
+    int: { type: 'number' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+/**
+ * EquippedItem — the serialized item card produced per occupied slot
+ * (DESIGN §6.3 items.*, §6.4). `summaryMods` are recognised lines;
+ * `unsupportedMods` are the lines the parser could not recognise (DESIGN §8.6).
+ */
+const equippedItemSchema = {
+  type: 'object',
+  required: [
+    'slot',
+    'itemId',
+    'name',
+    'rarity',
+    'baseName',
+    'requirements',
+    'summaryMods',
+    'unsupportedMods',
+  ],
+  properties: {
+    slot: { type: 'string' },
+    itemId: { type: 'string' },
+    name: { type: 'string' },
+    rarity: { type: 'string' },
+    baseName: { type: 'string' },
+    requirements: itemRequirementsSchema,
+    summaryMods: { type: 'array', items: { type: 'string' } },
+    unsupportedMods: { type: 'array', items: { type: 'string' } },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+/**
+ * EquipDelta — one stat's before/after change from an equip comparison
+ * (DESIGN §6.3 items.compare, §16.3 "item equip delta").
+ */
+const equipDeltaSchema = {
+  type: 'object',
+  required: ['statId', 'before', 'after', 'delta'],
+  properties: {
+    statId: { type: 'string' },
+    before: { type: 'number' },
+    after: { type: 'number' },
+    delta: { type: 'number' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
 // ----------------------------------------------------------------------------
 // CoreError envelope (DESIGN §6.4)
 // ----------------------------------------------------------------------------
@@ -268,6 +327,106 @@ const itemsParseClipboardResponseSchema = {
 } as const satisfies JSONSchema;
 
 // ----------------------------------------------------------------------------
+// items.getEquipped
+// ----------------------------------------------------------------------------
+
+const itemsGetEquippedRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:items.getEquipped:request',
+  title: 'ItemsGetEquippedRequest',
+  type: 'object',
+  required: ['buildId'],
+  properties: {
+    buildId: { type: 'string' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const itemsGetEquippedResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:items.getEquipped:response',
+  title: 'ItemsGetEquippedResponse',
+  type: 'object',
+  required: ['equipped'],
+  properties: {
+    equipped: { type: 'array', items: equippedItemSchema },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
+// items.createCustom
+// ----------------------------------------------------------------------------
+
+const itemsCreateCustomRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:items.createCustom:request',
+  title: 'ItemsCreateCustomRequest',
+  type: 'object',
+  required: ['baseId', 'mods'],
+  properties: {
+    baseId: { type: 'string' },
+    mods: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['text'],
+        properties: {
+          text: { type: 'string' },
+          statId: { type: 'string' },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const itemsCreateCustomResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:items.createCustom:response',
+  title: 'ItemsCreateCustomResponse',
+  type: 'object',
+  required: ['itemId', 'item'],
+  properties: {
+    itemId: { type: 'string' },
+    item: equippedItemSchema,
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
+// items.compare
+// ----------------------------------------------------------------------------
+
+const itemsCompareRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:items.compare:request',
+  title: 'ItemsCompareRequest',
+  type: 'object',
+  required: ['buildId', 'itemId', 'slot'],
+  properties: {
+    buildId: { type: 'string' },
+    itemId: { type: 'string' },
+    slot: { type: 'string' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const itemsCompareResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:items.compare:response',
+  title: 'ItemsCompareResponse',
+  type: 'object',
+  required: ['slot', 'deltas'],
+  properties: {
+    slot: { type: 'string' },
+    deltas: { type: 'array', items: equipDeltaSchema },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
 // Registry — the shared source of truth (method → request/response schema)
 // ----------------------------------------------------------------------------
 
@@ -276,12 +435,18 @@ export interface SchemaEntry {
   responseSchema: JSONSchema;
 }
 
-/** The MVP methods named in `tools/dev-workflow/phases.mjs`. */
+/**
+ * The MVP methods named in `tools/dev-workflow/phases.mjs`, plus the items.*
+ * expansion (DESIGN §6.3 items.getEquipped/createCustom/compare).
+ */
 export const MVP_METHODS = [
   'build.load',
   'build.save',
   'calc.run',
   'items.parseClipboard',
+  'items.getEquipped',
+  'items.createCustom',
+  'items.compare',
 ] as const satisfies readonly MvpMethod[];
 
 /**
@@ -306,5 +471,17 @@ export const schemaRegistry: Record<MvpMethod, SchemaEntry> = {
   'items.parseClipboard': {
     requestSchema: itemsParseClipboardRequestSchema,
     responseSchema: itemsParseClipboardResponseSchema,
+  },
+  'items.getEquipped': {
+    requestSchema: itemsGetEquippedRequestSchema,
+    responseSchema: itemsGetEquippedResponseSchema,
+  },
+  'items.createCustom': {
+    requestSchema: itemsCreateCustomRequestSchema,
+    responseSchema: itemsCreateCustomResponseSchema,
+  },
+  'items.compare': {
+    requestSchema: itemsCompareRequestSchema,
+    responseSchema: itemsCompareResponseSchema,
   },
 };

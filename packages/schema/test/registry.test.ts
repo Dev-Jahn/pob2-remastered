@@ -7,9 +7,17 @@ import { schemaRegistry, MVP_METHODS, CORE_ERROR_CODES, coreErrorSchema } from '
 import type { JSONSchema } from '../src/index.js';
 
 describe('schemaRegistry', () => {
-  it('covers exactly the four MVP methods named in phases.mjs', () => {
+  it('covers the four phases.mjs MVP methods plus the items.* expansion', () => {
     expect(Object.keys(schemaRegistry).sort()).toEqual(
-      ['build.load', 'build.save', 'calc.run', 'items.parseClipboard'].sort(),
+      [
+        'build.load',
+        'build.save',
+        'calc.run',
+        'items.parseClipboard',
+        'items.getEquipped',
+        'items.createCustom',
+        'items.compare',
+      ].sort(),
     );
   });
 

@@ -26,6 +26,12 @@
 import type {
   BuildSaveResponse,
   CalcRunResponse,
+  EquipDelta,
+  EquippedItem,
+  ItemModInput,
+  ItemsCompareResponse,
+  ItemsCreateCustomResponse,
+  ItemsGetEquippedResponse,
   ItemsParseClipboardResponse,
   Locale,
   ParsedItemMod,
@@ -176,6 +182,83 @@ export class CoreClient {
     )) as ItemsParseClipboardResponse;
   }
 
+  /**
+   * The item cards equipped on the loaded build (DESIGN §6.3 items.getEquipped).
+   * Validates the request against items.getEquipped:request, sends it to the
+   * runner's items.getEquipped, and validates the runner's {equipped} result
+   * against items.getEquipped:response — the runner already serializes the exact
+   * EquippedItem card shape, so it passes straight through.
+   */
+  async getEquipped(buildId: string): Promise<ItemsGetEquippedResponse> {
+    return (await this.runner.request(
+      'items.getEquipped',
+      { buildId },
+      (p) => ({ buildId: (p as { buildId: string }).buildId }),
+      (r) => ({ equipped: (r as { equipped?: EquippedItem[] }).equipped ?? [] }),
+    )) as ItemsGetEquippedResponse;
+  }
+
+  /**
+   * Build a custom item from a base id plus mod inputs (DESIGN §6.3
+   * items.createCustom). The request is validated against
+   * items.createCustom:request, then sent to the runner's items.createCustom and
+   * the result validated against items.createCustom:response.
+   *
+   * DOCUMENTED GAP (DESIGN §6.4 "러너가 표현 못하는 필드는 documented gap"): the
+   * headless runner does not implement items.createCustom yet, so a well-formed
+   * request surfaces a structured CoreClientError (method-not-found ->
+   * UPSTREAM_INCOMPATIBLE) rather than a fabricated item card. The request-side
+   * schema validation is real and runs regardless; this never fakes a success
+   * (NO-FALLBACK).
+   */
+  async createCustom(baseId: string, mods: ItemModInput[]): Promise<ItemsCreateCustomResponse> {
+    return (await this.runner.request(
+      'items.createCustom',
+      { baseId, mods },
+      (p) => ({
+        baseId: (p as { baseId: string }).baseId,
+        mods: (p as { mods: ItemModInput[] }).mods,
+      }),
+      (r) => r,
+    )) as ItemsCreateCustomResponse;
+  }
+
+  /**
+   * Stat delta of equipping `item` in `slot` (DESIGN §6.3 items.compare, §16.3
+   * "item equip delta"), routed through the runner's items.compare RPC. The runner
+   * drives the core's OWN non-mutating comparison machinery
+   * (calcsTab:GetMiscCalculator — Calcs.lua:123), recomputing the FULL output as if
+   * `item` occupied `slot` WITHOUT mutating the live build, and diffs it against the
+   * current baseline. Each stat is keyed by its machine-readable statId and
+   * `delta === after - before`; request + response are validated against
+   * items.compare:request / items.compare:response.
+   *
+   * This is a REAL before/after diff (not an A-vs-A pass): equipping the item
+   * already in `slot` yields a measured 0 across the set, while a different item
+   * yields the genuine non-zero change.
+   */
+  async equipDelta(
+    buildId: string,
+    item: EquippedItem,
+    slot: string,
+  ): Promise<ItemsCompareResponse> {
+    return (await this.runner.request(
+      'items.compare',
+      { buildId, itemId: item.itemId, slot },
+      (p) => ({
+        buildId: (p as { buildId: string }).buildId,
+        itemId: (p as { itemId: string }).itemId,
+        slot: (p as { slot: string }).slot,
+      }),
+      // The runner already serializes the exact { slot, deltas: EquipDelta[] } shape
+      // items.compare:response requires, so it passes straight through.
+      (r) => ({
+        slot: (r as { slot?: string }).slot ?? slot,
+        deltas: (r as { deltas?: EquipDelta[] }).deltas ?? [],
+      }),
+    )) as ItemsCompareResponse;
+  }
+
   /** Decode a PoB share code to XML and load it (DESIGN §6.3 loadShareCode). */
   async loadShareCode(code: string): Promise<LoadResult> {
     // Size limit BEFORE decode (DESIGN §14.2 "share code decode는 size limit
@@ -216,6 +299,7 @@ export class CoreClient {
     localeHint: Locale | undefined,
   ): ItemsParseClipboardResponse {
     const r = (wireResult ?? {}) as {
+      locale?: string;
       item?: { name?: string; rarity?: string; baseName?: string };
       mods?: Array<{ line?: string }>;
       unsupported?: string[];
@@ -228,9 +312,10 @@ export class CoreClient {
     for (const raw of unsupported) mods.push({ raw, status: 'unsupported' });
 
     const out: ItemsParseClipboardResponse = {
-      // Locale detection is a later phase (DESIGN §8.6 step 1); honour the hint or
-      // default to en-US rather than guessing.
-      locale: localeHint ?? 'en-US',
+      // Locale (DESIGN §8.6 step 1): an explicit caller hint wins; otherwise use the
+      // locale the runner ESTIMATED from the clipboard text (ko-KR vs en-US). Only a
+      // valid Locale value is accepted from the wire, never a guessed default.
+      locale: localeHint ?? coerceLocale(r.locale),
       mods,
       unsupported,
     };
@@ -239,6 +324,16 @@ export class CoreClient {
     if (typeof r.item?.name === 'string') out.name = r.item.name;
     return out;
   }
+}
+
+/**
+ * Coerce the runner's estimated locale string to a typed Locale (DESIGN §8.6 step
+ * 1). The runner emits one of the closed Locale union values; anything else (an
+ * older runner that omits it, or an unknown value) falls back to en-US — the
+ * conservative default that keeps the English path unchanged, never a wrong guess.
+ */
+function coerceLocale(value: unknown): Locale {
+  return value === 'ko-KR' || value === 'en-US' ? value : 'en-US';
 }
 
 /**

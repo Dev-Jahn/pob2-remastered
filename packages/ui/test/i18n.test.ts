@@ -46,6 +46,59 @@ describe('@pob2/ui i18n baseline', () => {
     }
   });
 
+  it('covers the Items tab keys (DESIGN §10.4): toolbar, slots, library, inspector', () => {
+    // Items tab redesign (§10.4): the header toolbar (item-set selector, clipboard
+    // import, craft, trade), the equipped-gear slot labels, the item library
+    // search/filter, the inspector action group (duplicate/delete/share/equip/
+    // compare), the parsed/unsupported affix badges, and the shared-item scope.
+    const required: StringKey[] = [
+      // Header toolbar.
+      'items.title',
+      'items.set.label',
+      'items.set.default',
+      'items.importFromClipboard',
+      'items.craft',
+      'items.trade',
+      // Equipped gear column + slot labels.
+      'items.equippedGear',
+      'items.slot.weapon1',
+      'items.slot.weapon2',
+      'items.slot.helmet',
+      'items.slot.body',
+      'items.slot.gloves',
+      'items.slot.boots',
+      'items.slot.ring1',
+      'items.slot.ring2',
+      'items.slot.amulet',
+      'items.slot.belt',
+      'items.slot.charm',
+      'items.slot.flask',
+      // Item library: search + filters + scope.
+      'items.library',
+      'items.search.placeholder',
+      'items.filter.slot',
+      'items.filter.type',
+      'items.filter.requirements',
+      'items.scope.build',
+      'items.scope.shared',
+      // Inspector + action group.
+      'items.inspector',
+      'items.action.duplicate',
+      'items.action.delete',
+      'items.action.share',
+      'items.action.changeSlot',
+      'items.action.compare',
+      'items.action.craftFromBase',
+      // Affix badges.
+      'items.badge.parsed',
+      'items.badge.unsupported',
+    ];
+    for (const key of required) {
+      expect(koKeys).toContain(key);
+      expect(enKeys).toContain(key);
+    }
+  });
+
   it('resolves every key to a non-empty string in both locales', () => {
     for (const locale of locales) {
       for (const key of enKeys) {

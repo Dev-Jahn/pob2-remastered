@@ -255,3 +255,352 @@ body {
   color: var(--pob-muted);
   font-size: 12px;
 }
+
+/* ── Items tab: header toolbar + the §10.4 3-region layout ────────────────── */
+.pob-items {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  height: 100%;
+}
+
+.pob-items__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pob-item-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pob-item-set__label {
+  color: var(--pob-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pob-items__tool,
+.pob-item-set__select,
+.pob-item-library select,
+.pob-item-library input,
+.pob-item-inspector select,
+.pob-item-inspector button {
+  background: var(--pob-panel-2);
+  border: 1px solid var(--pob-border);
+  border-radius: 6px;
+  color: var(--pob-text);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+/* The three §10.4 regions: equipped grid | library | inspector, side by side. */
+.pob-items__regions {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(240px, 1.2fr) minmax(260px, 1fr);
+  gap: 14px;
+  min-height: 0;
+  flex: 1;
+}
+
+.pob-items__region {
+  background: var(--pob-panel);
+  border: 1px solid var(--pob-border);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.pob-items__region-title {
+  color: var(--pob-accent);
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+/* ── Equipped-gear grid: one slot card per canonical slot ─────────────────── */
+.pob-items__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pob-items__slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pob-items__slot-label {
+  color: var(--pob-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pob-items__slot-empty {
+  border: 1px dashed var(--pob-border);
+  border-radius: 6px;
+  height: 28px;
+}
+
+/* ── Item card (§10.4 Item card) ─────────────────────────────────────────── */
+.pob-item-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: var(--pob-panel-2);
+  border: 1px solid var(--pob-border);
+  border-left: 3px solid var(--pob-border);
+  border-radius: 6px;
+  color: var(--pob-text);
+  cursor: pointer;
+  padding: 8px 10px;
+}
+
+/* Rarity colours are additive: the card is identifiable by name/base too. */
+.pob-item-card[data-rarity='normal'] {
+  border-left-color: #c8c8c8;
+}
+.pob-item-card[data-rarity='magic'] {
+  border-left-color: #8888ff;
+}
+.pob-item-card[data-rarity='rare'] {
+  border-left-color: #ffff77;
+}
+.pob-item-card[data-rarity='unique'] {
+  border-left-color: #af6025;
+}
+
+.pob-item-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pob-item-card__icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--pob-border);
+  border-radius: 3px;
+  background: var(--pob-panel);
+  flex: none;
+}
+
+.pob-item-card__name {
+  font-weight: 600;
+}
+
+.pob-item-card__base {
+  color: var(--pob-muted);
+  font-size: 12px;
+}
+
+.pob-item-card__reqs,
+.pob-item-card__deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pob-item-card__req {
+  background: var(--pob-panel);
+  border: 1px solid var(--pob-border);
+  border-radius: 10px;
+  color: var(--pob-muted);
+  font-size: 11px;
+  padding: 1px 8px;
+}
+
+.pob-item-card__mods {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+}
+
+.pob-item-card__mod {
+  color: var(--pob-text);
+  font-size: 12px;
+}
+
+.pob-item-card__delta {
+  display: inline-flex;
+  gap: 4px;
+  border: 1px solid var(--pob-border);
+  border-radius: 10px;
+  font-size: 11px;
+  padding: 1px 8px;
+}
+
+.pob-item-card__delta[data-direction='gain'] {
+  color: #5fd07a;
+}
+.pob-item-card__delta[data-direction='loss'] {
+  color: #e0685f;
+}
+.pob-item-card__delta[data-direction='neutral'],
+.pob-item-card__delta[data-direction='missing'] {
+  color: var(--pob-muted);
+}
+
+/* ── Item library: search + filters + result list ────────────────────────── */
+.pob-item-library {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pob-item-library__search {
+  width: 100%;
+}
+
+.pob-item-library__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pob-item-library__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pob-item-library__filter-label {
+  color: var(--pob-muted);
+  font-size: 11px;
+}
+
+.pob-item-library__results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pob-item-library__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.pob-item-library__row:hover {
+  background: var(--pob-panel-2);
+}
+
+.pob-item-library__row-base {
+  color: var(--pob-muted);
+  font-size: 12px;
+}
+
+/* ── Item inspector: text sections, affix badges, actions ─────────────────── */
+.pob-item-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pob-item-inspector__empty {
+  color: var(--pob-muted);
+  font-size: 13px;
+}
+
+.pob-item-inspector__header {
+  display: flex;
+  flex-direction: column;
+  border-left: 3px solid var(--pob-border);
+  padding-left: 8px;
+}
+
+.pob-item-inspector__name {
+  font-weight: 600;
+}
+
+.pob-item-inspector__base {
+  color: var(--pob-muted);
+  font-size: 12px;
+}
+
+.pob-item-inspector__section-title {
+  color: var(--pob-muted);
+  font-size: 12px;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pob-item-inspector__source {
+  background: var(--pob-bg);
+  border: 1px solid var(--pob-border);
+  border-radius: 6px;
+  color: var(--pob-text);
+  font-size: 12px;
+  margin: 0;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+}
+
+.pob-item-inspector__affix-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pob-item-inspector__affix {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+/* Badge meaning rides on icon + text label, not colour (§11.3). */
+.pob-item-inspector__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--pob-border);
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 0 6px;
+  flex: none;
+}
+
+.pob-item-inspector__affix[data-affix='unsupported'] .pob-item-inspector__badge {
+  border-color: #e0685f;
+  color: #e0685f;
+}
+
+.pob-item-inspector__roll-editor {
+  border: 1px dashed var(--pob-border);
+  border-radius: 6px;
+  height: 32px;
+}
+
+.pob-item-inspector__slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pob-item-inspector__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

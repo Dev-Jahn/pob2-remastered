@@ -26,7 +26,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { buildOverviewModel } from '@pob2/ui';
-import type { CalcRunResponse } from '@pob2/schema';
+import type { CalcRunResponse, EquippedItem, ItemsParseClipboardResponse } from '@pob2/schema';
 import { createBuildSession, type BuildClient } from './build-session.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -45,6 +45,28 @@ const SAMPLE_STATS: CalcRunResponse = {
     { statId: 'Life', value: 50, label: 'Life' },
     { statId: 'Mana', value: 40, label: 'Mana' },
   ],
+};
+
+/** The build's equipped boots an items.getEquipped pass returns (DESIGN §6.3). */
+const SAMPLE_BOOTS: EquippedItem = {
+  slot: 'Boots',
+  itemId: 'item-boots-1',
+  name: 'Sorrow Sole',
+  rarity: 'Rare',
+  baseName: 'Hunting Shoes',
+  requirements: { level: 33, str: 0, dex: 62, int: 0 },
+  summaryMods: ['25% increased Movement Speed'],
+  unsupportedMods: ['Mirror something the parser cannot read'],
+};
+
+/** A clipboard parse with one recognised mod, one unrecognised line (DESIGN §8.6). */
+const SAMPLE_PARSE: ItemsParseClipboardResponse = {
+  locale: 'en-US',
+  baseId: 'Hunting Shoes',
+  rarity: 'Rare',
+  name: 'Sorrow Sole',
+  mods: [{ raw: '25% increased Movement Speed', status: 'parsed', statId: 'move_speed' }],
+  unsupported: ['Mirror something the parser cannot read'],
 };
 
 /**
@@ -77,6 +99,22 @@ function mockClient(): BuildClient & {
     async saveShareCode(buildId: string) {
       calls.push({ method: 'saveShareCode', arg: buildId });
       return { format: 'shareCode', data: 'eNcOdEd' };
+    },
+    async getEquipped(buildId: string) {
+      calls.push({ method: 'getEquipped', arg: buildId });
+      return { equipped: [SAMPLE_BOOTS] };
+    },
+    async parseClipboard(text: string, localeHint?) {
+      calls.push({ method: 'parseClipboard', arg: { text, localeHint } });
+      return SAMPLE_PARSE;
+    },
+    async createCustom(baseId: string, mods) {
+      calls.push({ method: 'createCustom', arg: { baseId, mods } });
+      return { itemId: 'custom-1', item: { ...SAMPLE_BOOTS, itemId: 'custom-1' } };
+    },
+    async equipDelta(buildId: string, item, slot) {
+      calls.push({ method: 'equipDelta', arg: { buildId, itemId: item.itemId, slot } });
+      return { slot, deltas: [] };
     },
   };
 }
@@ -162,5 +200,51 @@ describe('build-session — save() round-trip', () => {
     await expect(session.save({ format: 'xml' })).rejects.toThrow();
     // Nothing was sent to the client.
     expect(client.calls).toEqual([]);
+  });
+});
+
+describe('build-session — Items tab paths (DESIGN §10.4, §6.3)', () => {
+  it('getEquipped() routes to client.getEquipped with the open buildId', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await session.open({ xml: sampleXml });
+    const equipped = await session.getEquipped();
+
+    // Returns the build's real equipped gear, routed with the open build id.
+    expect(equipped.equipped).toHaveLength(1);
+    expect(equipped.equipped.at(0)?.name).toBe('Sorrow Sole');
+    expect(client.calls.at(-1)).toEqual({ method: 'getEquipped', arg: 'build-1' });
+  });
+
+  it('rejects getEquipped() before a build is opened (no buildId to query)', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await expect(session.getEquipped()).rejects.toThrow();
+    // Nothing was sent to the client (NO-FALLBACK — no fabricated empty grid).
+    expect(client.calls).toEqual([]);
+  });
+
+  it('parseClipboard() shapes the parse into an inspector item (parsed/unsupported split)', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    // No open build required — pasting an item is independent of the loaded build.
+    const { item, locale } = await session.parseClipboard('Sorrow Sole\nHunting Shoes');
+
+    expect(client.calls).toEqual([
+      {
+        method: 'parseClipboard',
+        arg: { text: 'Sorrow Sole\nHunting Shoes', localeHint: undefined },
+      },
+    ]);
+    // The recognised mod is parsed; the unrecognised line stays separate (§8.6).
+    expect(item.name).toBe('Sorrow Sole');
+    expect(item.baseType).toBe('Hunting Shoes');
+    expect(item.parsedMods).toEqual(['25% increased Movement Speed']);
+    expect(item.unsupportedMods).toEqual(['Mirror something the parser cannot read']);
+    // The detected source locale is surfaced for the §8.6 import indicator.
+    expect(locale).toBe('en-US');
   });
 });

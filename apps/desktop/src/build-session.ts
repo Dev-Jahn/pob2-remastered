@@ -23,8 +23,18 @@
  * CoreClientError unchanged. `save()` before any `open()` throws rather than
  * inventing a build id to round-trip.
  */
-import type { BuildSaveResponse, CalcRunResponse } from '@pob2/schema';
-import type { BuildSummary } from '@pob2/ui';
+import type {
+  BuildSaveResponse,
+  CalcRunResponse,
+  EquippedItem,
+  ItemModInput,
+  ItemsCompareResponse,
+  ItemsCreateCustomResponse,
+  ItemsGetEquippedResponse,
+  ItemsParseClipboardResponse,
+  Locale,
+} from '@pob2/schema';
+import type { BuildSummary, InspectedItem } from '@pob2/ui';
 
 /**
  * The slice of the @pob2/core-client `CoreClient` Core API this data layer needs,
@@ -43,6 +53,14 @@ export interface BuildClient {
   save(buildId: string): Promise<BuildSaveResponse>;
   /** build.exportShareCode — export the open build as a PoB share code. */
   saveShareCode(buildId: string): Promise<{ format: 'shareCode'; data: string }>;
+  /** items.getEquipped — the cards equipped on the loaded build (DESIGN §6.3). */
+  getEquipped(buildId: string): Promise<ItemsGetEquippedResponse>;
+  /** items.parseClipboard — parse a clipboard item string (DESIGN §6.3, §8.6). */
+  parseClipboard(text: string, localeHint?: Locale): Promise<ItemsParseClipboardResponse>;
+  /** items.createCustom — build a custom item from a base id + mod inputs (§6.3). */
+  createCustom(baseId: string, mods: ItemModInput[]): Promise<ItemsCreateCustomResponse>;
+  /** items.compare — stat delta of equipping `item` in `slot` (DESIGN §6.3, §16.3). */
+  equipDelta(buildId: string, item: EquippedItem, slot: string): Promise<ItemsCompareResponse>;
 }
 
 /** What `open()` accepts: build XML or a PoB share code (DESIGN §12.2, §10.9). */
@@ -57,6 +75,19 @@ export interface OpenResult {
 /** Export format for `save()` (DESIGN §12.2 PoB XML / share code). */
 export type SaveFormat = 'xml' | 'shareCode';
 
+/** The equipped-gear data the Items tab consumes: the build's `EquippedItem[]`. */
+export interface EquippedResult {
+  equipped: EquippedItem[];
+}
+
+/** What `parseClipboard()` yields: an inspector-ready item + its source locale. */
+export interface ParsedItemResult {
+  /** The parsed clipboard item, shaped for the @pob2/ui ItemInspector (§10.4). */
+  item: InspectedItem;
+  /** The locale the import was parsed under (estimated or hinted, §8.6). */
+  locale: Locale;
+}
+
 /** A loaded build session: open a source, save the open build (DESIGN §10.9). */
 export interface BuildSession {
   /**
@@ -70,6 +101,50 @@ export interface BuildSession {
    * has been opened — there is no build id to round-trip (NO-FALLBACK).
    */
   save(options: { format: SaveFormat }): Promise<BuildSaveResponse>;
+  /**
+   * The cards equipped on the open build (DESIGN §6.3 items.getEquipped), the
+   * input to the §10.4 equipped-gear grid. Throws if no build has been opened —
+   * there is no build id to query (NO-FALLBACK).
+   */
+  getEquipped(): Promise<EquippedResult>;
+  /**
+   * Parse a clipboard item string (DESIGN §6.3 items.parseClipboard, §8.6) and
+   * shape it for the §10.4 inspector. Does NOT require an open build — pasting an
+   * item is independent of the loaded build.
+   */
+  parseClipboard(text: string, localeHint?: Locale): Promise<ParsedItemResult>;
+}
+
+/**
+ * Shape an `items.parseClipboard` response for the @pob2/ui ItemInspector (DESIGN
+ * §10.4 inspector, §8.6 split). Mirrors the @pob2/ui useItemsTab mapping: parsed
+ * mod lines are the entries the parser recognised; the unsupported lines come from
+ * the dedicated `unsupported[]` list, kept apart so an unrecognised line is never
+ * read as a parsed mod. The verbatim source text is reconstructed from the
+ * recognised name/base + every line (§8.6 "원문 보존"); the translated block reuses
+ * it (a dedicated ko translation arrives with the i18n data layer, NO-FALLBACK).
+ */
+function toInspected(parsed: ItemsParseClipboardResponse): InspectedItem {
+  const parsedMods = parsed.mods.filter((m) => m.status === 'parsed').map((m) => m.raw);
+  const unsupportedMods = [...parsed.unsupported];
+  const name = parsed.name ?? '';
+  const baseType = parsed.baseId ?? '';
+  const sourceText = [name, baseType, ...parsedMods, ...unsupportedMods]
+    .filter((l) => l.length > 0)
+    .join('\n');
+  return {
+    itemId: 'imported',
+    name,
+    baseType,
+    rarityColorKey: (parsed.rarity ?? '').trim().toLowerCase(),
+    sourceText,
+    translatedText: sourceText,
+    parsedMods,
+    unsupportedMods,
+    // The clipboard item is not equipped, so the inspector's slot selector
+    // defaults to the first weapon slot (matching @pob2/ui useItemsTab).
+    slot: 'Weapon 1',
+  };
 }
 
 /**
@@ -97,6 +172,18 @@ export function createBuildSession(client: BuildClient): BuildSession {
         throw new Error('build-session: save() called before a build was opened');
       }
       return format === 'shareCode' ? client.saveShareCode(buildId) : client.save(buildId);
+    },
+
+    async getEquipped() {
+      if (buildId === null) {
+        throw new Error('build-session: getEquipped() called before a build was opened');
+      }
+      return client.getEquipped(buildId);
+    },
+
+    async parseClipboard(text, localeHint) {
+      const parsed = await client.parseClipboard(text, localeHint);
+      return { item: toInspected(parsed), locale: parsed.locale };
     },
   };
 }

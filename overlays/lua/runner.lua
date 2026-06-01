@@ -148,6 +148,12 @@ local METHODS = {
 	["items.parseClipboard"] = function(params)
 		return getApi().items.parseClipboard(params and params.text)
 	end,
+	["items.getEquipped"] = function(params)
+		return getApi().items.getEquipped(params and params.buildId)
+	end,
+	["items.compare"] = function(params)
+		return getApi().items.compare(params and params.buildId, params and params.itemId, params and params.slot)
+	end,
 }
 
 local function ok(id, result)

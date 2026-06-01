@@ -4,16 +4,27 @@
 //! owns file save/load for build documents and exposes only an explicit set of
 //! commands to the web frontend.
 //!
-//! DESIGN §14.1 "Tauri IPC": 허용된 command만 expose — the only two commands
-//! registered with `invoke_handler` are [`open_build_file`] and
-//! [`save_build_file`]. No arbitrary shell, no networking.
+//! DESIGN §14.1 "Tauri IPC": 허용된 command만 expose — the commands registered
+//! with `invoke_handler` are [`open_build_file`], [`save_build_file`], and
+//! [`core_request`] (the single allowlisted Core API gateway, which itself only
+//! routes the [`core_bridge::ALLOWED_METHODS`] set). No arbitrary shell, no
+//! networking.
 //!
 //! DESIGN §14.2 "Clipboard/import sandbox": 파일 import는 확장자와 schema 검증 —
 //! every file path crossing the IPC boundary is run through the pure
 //! [`validate_build_path`] guard (extension allowlist + path-traversal reject)
-//! before any filesystem access.
+//! before any filesystem access. The Lua core runs out-of-process (see
+//! [`core_bridge`]); a runner crash / malformed input becomes a CoreError, never
+//! a host crash.
+
+mod core_bridge;
 
 use std::path::{Component, Path};
+use std::sync::Mutex;
+
+use core_bridge::{CoreBridge, CoreError, RunnerOptions};
+use serde_json::Value;
+use tauri::State;
 
 /// File extensions a build document may use (DESIGN §5.1 "build XML/share code",
 /// §6.5 build documents). Compared case-insensitively against the path's extension.
@@ -106,14 +117,68 @@ fn save_build_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(validated, contents).map_err(|e| e.to_string())
 }
 
+/// Lazily-started out-of-process Lua core bridge, owned by the Tauri app as
+/// managed state (DESIGN §5.1 "Lua core runner process lifecycle 관리"). The
+/// runner is spawned on the FIRST [`core_request`] rather than at startup so a
+/// boot failure surfaces as a per-request CoreError to the UI (and so the host
+/// window still opens if the core cannot boot). The `Mutex<Option<…>>` lets the
+/// bridge be (re)started on demand; a crash drops it back to `None`.
+#[derive(Default)]
+pub struct CoreBridgeState(Mutex<Option<CoreBridge>>);
+
+/// IPC: the single allowlisted Core API gateway (DESIGN §14.1 "허용된 command만
+/// expose", §6.3 Core API). Routes `method` + `params` to the out-of-process Lua
+/// runner and returns its result JSON. The bridge's own allowlist
+/// ([`core_bridge::ALLOWED_METHODS`]) is the security boundary: a non-allowlisted
+/// method is refused as a CoreError before it can reach the runner.
+///
+/// NO-FALLBACK (DESIGN §14.2): a runner crash / malformed reply is returned to the
+/// frontend as a [`CoreError`] (the IPC `Err` payload). It never panics the host;
+/// a dead runner is dropped so the NEXT call re-spawns it.
+#[tauri::command]
+fn core_request(
+    state: State<'_, CoreBridgeState>,
+    method: String,
+    params: Value,
+) -> Result<Value, CoreError> {
+    // Hold the state lock across the whole request so the single runner serializes
+    // concurrent IPC calls (the runner answers one request per line, in order).
+    let mut guard = state.0.lock().unwrap_or_else(|p| p.into_inner());
+
+    // (Re)start the runner if it is not currently alive (first call, or after a
+    // crash dropped it). A start failure is itself a CoreError, not a panic.
+    let needs_start = guard.as_ref().map(|b| !b.is_running()).unwrap_or(true);
+    if needs_start {
+        *guard = Some(CoreBridge::start(RunnerOptions::in_repo())?);
+    }
+
+    let bridge = guard
+        .as_ref()
+        .expect("bridge was just started or already running");
+    let result = bridge.request(&method, params);
+
+    // If the request killed the runner (transport failure), drop it so the next
+    // call re-spawns a fresh runner rather than reusing a dead pipe.
+    if result.is_err() && !bridge.is_running() {
+        *guard = None;
+    }
+    result
+}
+
 /// Build and run the Tauri application (DESIGN §5.1 Tauri application shell).
 ///
 /// Registers exactly the allowlisted IPC commands (DESIGN §14.1 허용된 command만
-/// expose). `#[cfg_attr(mobile, ...)]` lets the same entry point serve mobile.
+/// expose) and manages the lazily-started [`CoreBridgeState`]. `#[cfg_attr(mobile,
+/// ...)]` lets the same entry point serve mobile.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![open_build_file, save_build_file])
+        .manage(CoreBridgeState::default())
+        .invoke_handler(tauri::generate_handler![
+            open_build_file,
+            save_build_file,
+            core_request
+        ])
         .run(tauri::generate_context!())
         .expect("error while running PoB2 Remastered desktop host");
 }

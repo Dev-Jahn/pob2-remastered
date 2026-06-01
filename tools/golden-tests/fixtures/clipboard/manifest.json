@@ -66,5 +66,34 @@
     "name": "Mock Item, Plated Mace",
     "parsedMods": ["+22 to maximum Life", "+18% to Cold Resistance"],
     "unsupported": ["This is not a real modifier line at all"]
+  },
+  "ko-rare-mace": {
+    "intent": "Korean-client rare mace: locale -> ko-KR, Korean base/rarity/mod lines mapped to internal ids, one untranslated Korean line preserved as unsupported (§8.6)",
+    "locale": "ko-KR",
+    "baseId": "Plated Mace",
+    "rarity": "RARE",
+    "name": "Brood Bane, Plated Mace",
+    "parsedMods": [
+      "+15 to Strength",
+      "54% increased Physical Damage",
+      "+22 to maximum Life",
+      "+18% to Cold Resistance"
+    ],
+    "unsupported": ["이 줄은 실제 수정자가 전혀 아닙니다"]
+  },
+  "ko-unique": {
+    "intent": "Korean-client unique body armour: locale -> ko-KR, Korean unique/base/behavioural mod lines mapped to internal ids, corrupted section recognised (§8.6)",
+    "locale": "ko-KR",
+    "baseId": "Scale Mail",
+    "rarity": "UNIQUE",
+    "name": "Doryani's Prototype, Scale Mail",
+    "parsedMods": [
+      "70% increased Armour",
+      "+72 to maximum Life",
+      "+100% of Armour also applies to Lightning Damage",
+      "Enemies in your Presence have Lightning Resistance equal to yours",
+      "Lightning Resistance does not affect Lightning damage taken"
+    ],
+    "unsupported": []
   }
 }

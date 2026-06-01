@@ -12,6 +12,7 @@
     "@pob2/core-client": "workspace:*",
     "@pob2/schema": "workspace:*",
     "@pob2/ui": "workspace:*",
+    "@tauri-apps/api": "^2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

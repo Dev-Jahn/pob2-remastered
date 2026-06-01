@@ -49,6 +49,47 @@ export interface ParsedItemMod {
   statId?: string;
 }
 
+/** Attribute/level requirements of an item card (mirrors the Lua serializer). */
+export interface ItemRequirements {
+  level: number;
+  str: number;
+  dex: number;
+  int: number;
+}
+
+/**
+ * A serialized equipped-item card (DESIGN §6.3 items.*, §6.4). This is the PLAIN
+ * shape `modern_api items.getEquipped` produces per occupied slot — no live core
+ * table leaks. `summaryMods` holds the recognised mod lines; `unsupportedMods`
+ * holds lines the parser could not recognise, kept separate (DESIGN §8.6).
+ */
+export interface EquippedItem {
+  /** Equipment slot name, e.g. "Weapon 1", "Body Armour". */
+  slot: string;
+  /** Build-local item id. */
+  itemId: string;
+  name: string;
+  rarity: string;
+  baseName: string;
+  requirements: ItemRequirements;
+  /** Recognised mod lines, human-readable. */
+  summaryMods: string[];
+  /** Lines the mod parser could not recognise (DESIGN §8.6). */
+  unsupportedMods: string[];
+}
+
+/**
+ * One stat's before/after change from an equip comparison (DESIGN §6.3
+ * items.compare, §16.3 "item equip delta"). `delta === after - before`.
+ */
+export interface EquipDelta {
+  /** Machine-readable upstream stat id (DESIGN §6.4). */
+  statId: string;
+  before: number;
+  after: number;
+  delta: number;
+}
+
 // ----------------------------------------------------------------------------
 // MVP request payloads
 // ----------------------------------------------------------------------------
@@ -72,6 +113,21 @@ export interface CalcRunRequest {
 export interface ItemsParseClipboardRequest {
   text: string;
   localeHint?: Locale;
+}
+
+export interface ItemsGetEquippedRequest {
+  buildId: BuildId;
+}
+
+export interface ItemsCreateCustomRequest {
+  baseId: string;
+  mods: ItemModInput[];
+}
+
+export interface ItemsCompareRequest {
+  buildId: BuildId;
+  itemId: string;
+  slot: string;
 }
 
 // ----------------------------------------------------------------------------
@@ -106,6 +162,23 @@ export interface ItemsParseClipboardResponse {
   unsupported: string[];
 }
 
+/** One item card per occupied equipped slot (DESIGN §6.3 items.getEquipped). */
+export interface ItemsGetEquippedResponse {
+  equipped: EquippedItem[];
+}
+
+/** The created custom item plus its serialized card (DESIGN §6.3 items.createCustom). */
+export interface ItemsCreateCustomResponse {
+  itemId: string;
+  item: EquippedItem;
+}
+
+/** Per-stat equip deltas for one slot (DESIGN §6.3 items.compare, §16.3). */
+export interface ItemsCompareResponse {
+  slot: string;
+  deltas: EquipDelta[];
+}
+
 // ----------------------------------------------------------------------------
 // Full §6.3 request map (MVP methods typed; rest are type-only stubs)
 // ----------------------------------------------------------------------------
@@ -136,10 +209,11 @@ export interface CoreRequestMap {
   'calc.run': CalcRunRequest;
   'calc.explain': { buildId: BuildId; statId: string; activeSkillId?: string };
 
-  // --- items (MVP: parseClipboard) ---
+  // --- items (MVP: parseClipboard, getEquipped, createCustom, compare) ---
   'items.parseClipboard': ItemsParseClipboardRequest;
-  'items.createCustom': { baseId: string; mods: ItemModInput[] };
-  'items.compare': { buildId: BuildId; itemId: string; slot: string };
+  'items.getEquipped': ItemsGetEquippedRequest;
+  'items.createCustom': ItemsCreateCustomRequest;
+  'items.compare': ItemsCompareRequest;
 
   // --- tree (deferred) ---
   'tree.previewAllocate': { buildId: BuildId; nodeIds: string[] };
@@ -160,6 +234,9 @@ export interface CoreResponseMap {
   'build.save': BuildSaveResponse;
   'calc.run': CalcRunResponse;
   'items.parseClipboard': ItemsParseClipboardResponse;
+  'items.getEquipped': ItemsGetEquippedResponse;
+  'items.createCustom': ItemsCreateCustomResponse;
+  'items.compare': ItemsCompareResponse;
 }
 
 /** The MVP method names, as a literal union. */

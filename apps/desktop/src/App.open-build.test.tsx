@@ -48,6 +48,15 @@ function fakeSession(): BuildSession & { opened: OpenSource[]; saved: SaveFormat
       saved.push(format);
       return { format: 'xml', data: '<xml/>' };
     },
+    // The Items-tab session surface (DESIGN §6.3): this Overview-focused suite
+    // does not exercise equipped gear, so getEquipped yields an empty grid (no
+    // fabricated cards) and parseClipboard is never called here.
+    async getEquipped() {
+      return { equipped: [] };
+    },
+    async parseClipboard() {
+      throw new Error('parseClipboard not used in the open-build suite');
+    },
   };
 }
 

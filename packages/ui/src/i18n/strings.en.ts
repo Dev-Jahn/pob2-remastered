@@ -48,4 +48,73 @@ export const stringsEn = {
   'warning.resistanceLow': 'Resistance Below Cap',
   'warning.unsupportedModifier': 'Unsupported Modifier',
   'warning.itemParseFailed': 'Item Parse Failed',
+
+  // Items tab redesign (DESIGN §10.4). Header toolbar: item-set selector,
+  // clipboard import, and the craft/trade entry points.
+  'items.title': 'Items',
+  'items.set.label': 'Item Set',
+  'items.set.default': 'Default',
+  'items.importFromClipboard': 'Import from Clipboard',
+  'items.craft': 'Craft',
+  'items.trade': 'Trade',
+
+  // Equipped Gear column and its slot labels (DESIGN §10.4 layout).
+  'items.equippedGear': 'Equipped Gear',
+  'items.slot.weapon1': 'Weapon 1',
+  'items.slot.weapon2': 'Weapon 2',
+  'items.slot.helmet': 'Helmet',
+  'items.slot.body': 'Body Armour',
+  'items.slot.gloves': 'Gloves',
+  'items.slot.boots': 'Boots',
+  'items.slot.ring1': 'Ring 1',
+  'items.slot.ring2': 'Ring 2',
+  'items.slot.amulet': 'Amulet',
+  'items.slot.belt': 'Belt',
+  'items.slot.charm': 'Charm',
+  'items.slot.flask': 'Flask',
+
+  // Item Library column: search box, filters, and the build/shared scope toggle
+  // (DESIGN §10.4 "공유 보관함" shared item scope).
+  'items.library': 'Item Library',
+  'items.search.placeholder': 'Search items',
+  'items.filter.slot': 'Slot',
+  'items.filter.type': 'Type',
+  'items.filter.requirements': 'Requirements',
+  'items.scope.build': 'This Build',
+  'items.scope.shared': 'Shared Stash',
+
+  // Inspector column: text sections, the roll-range editor, the empty state, and
+  // the action group (DESIGN §10.4 item inspector: 원문/한국어 텍스트, roll range editor).
+  'items.inspector': 'Inspector',
+  'items.inspector.sourceText': 'Original Text',
+  'items.inspector.translatedText': 'Korean Text',
+  'items.inspector.parsedMods': 'Parsed Modifiers',
+  'items.inspector.unsupportedMods': 'Unsupported Modifiers',
+  'items.inspector.rollRange': 'Roll Range',
+  'items.inspector.empty': 'Select an item to inspect',
+  'items.action.duplicate': 'Duplicate',
+  'items.action.delete': 'Delete',
+  'items.action.share': 'Share to Library',
+  'items.action.changeSlot': 'Change Slot',
+  'items.action.compare': 'Compare',
+  'items.action.craftFromBase': 'Craft from Base',
+
+  // Affix line parsed/unsupported badges (DESIGN §10.4 affix badge).
+  'items.badge.parsed': 'Parsed',
+  'items.badge.unsupported': 'Unsupported',
+
+  // Requirement-chip labels on an item card (DESIGN §10.4 requirement chip).
+  'items.req.level': 'Level',
+  'items.req.str': 'Str',
+  'items.req.dex': 'Dex',
+  'items.req.int': 'Int',
+
+  // Clipboard import (DESIGN §10.4 Import from Clipboard, §8.6 ko/en auto-detect).
+  'items.clipboard.pasteLabel': 'Paste item text',
+
+  // Custom item creation (DESIGN §10.4 custom item: base + mods).
+  'items.custom.title': 'Create Custom Item',
+  'items.custom.base': 'Base Item',
+  'items.custom.mods': 'Modifiers, one per line',
+  'items.custom.create': 'Create',
 } as const;

@@ -59,11 +59,25 @@ const validBuildState = {
   },
 };
 
+const validEquippedItem = {
+  slot: 'Weapon 1',
+  itemId: '17',
+  name: 'Runeforged Warpick',
+  rarity: 'NORMAL',
+  baseName: 'Runeforged Warpick',
+  requirements: { level: 1, str: 12, dex: 0, int: 0 },
+  summaryMods: ['Adds 1 to 3 Physical Damage'],
+  unsupportedMods: [],
+};
+
 const validRequests: Record<string, unknown> = {
   'build.load': { source: '<PathOfBuilding/>', format: 'xml' },
   'build.save': { buildId: 'b-1', format: 'shareCode' },
   'calc.run': { buildId: 'b-1', options: { activeSkillId: 'sk-1' } },
   'items.parseClipboard': { text: '아이템 텍스트', localeHint: 'ko-KR' },
+  'items.getEquipped': { buildId: 'b-1' },
+  'items.createCustom': { baseId: 'Runeforged Warpick', mods: [{ text: '+50 to maximum Life' }] },
+  'items.compare': { buildId: 'b-1', itemId: '42', slot: 'Weapon 1' },
 };
 
 const validResponses: Record<string, unknown> = {
@@ -77,6 +91,12 @@ const validResponses: Record<string, unknown> = {
     locale: 'ko-KR',
     mods: [{ raw: '생명력 +50', status: 'parsed', statId: 'life' }],
     unsupported: [],
+  },
+  'items.getEquipped': { equipped: [validEquippedItem] },
+  'items.createCustom': { itemId: '42', item: validEquippedItem },
+  'items.compare': {
+    slot: 'Weapon 1',
+    deltas: [{ statId: 'TotalDPS', before: 1000, after: 1500, delta: 500 }],
   },
 };
 

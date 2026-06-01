@@ -12,7 +12,8 @@
 - Phase 0: ✓ done — squash-merged to `main` (97c5b13), pushed
 - Phase 1: ✓ done — squash-merged to `main` (8fb171e), pushed
 - Phase 2: ✓ done — squash-merged to `main` (c2e43b9), pushed
-- Current phase: **3** (Items tab rebuild) — in progress on `feat/phase-3-items`
+- Phase 3: ✓ done — gate set green (`run-gate 3` exit 0); visual `/items` verified; on `feat/phase-3-items`
+- Current phase: **4** (Skills/Config/Calcs) — pending
 - Env: Rust toolchain provisioned (cargo 1.96, user-space `~/.cargo`, reachable in login shell);
   `webkit2gtk-4.1` dev libs already present → Tauri buildable; Playwright chromium present → visual gates live
 - TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in
@@ -22,16 +23,16 @@
 
 ## Phase ledger
 
-| Phase | Status      | Gate evidence                                                    | 🚩Flags | Blockers |
-| ----- | ----------- | ---------------------------------------------------------------- | ------- | -------- |
-| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below               | 1       |          |
-| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below                  |         |          |
-| 2     | done        | `run-gate 2` pass (8/8); visual verified by direct vision; below | 2       |          |
-| 3     | in progress |                                                                  |         |          |
-| 4     | pending     |                                                                  |         |          |
-| 5     | pending     |                                                                  |         |          |
-| 6     | pending     |                                                                  |         |          |
-| 7     | pending     |                                                                  |         |          |
+| Phase | Status  | Gate evidence                                                             | 🚩Flags | Blockers |
+| ----- | ------- | ------------------------------------------------------------------------- | ------- | -------- |
+| 0     | done    | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
+| 1     | done    | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
+| 2     | done    | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
+| 3     | done    | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
+| 4     | pending |                                                                           |         |          |
+| 5     | pending |                                                                           |         |          |
+| 6     | pending |                                                                           |         |          |
+| 7     | pending |                                                                           |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -125,9 +126,133 @@ exits `0` iff no required gate `fail`ed), and each gate's `evidence` line begins
 names straight from `gates.mjs` and asserts this row reads `done` with `exit=0` evidence — so the
 recorded sign-off cannot silently regress and the guard cannot drift from the gate set.
 
+## Phase 3 gate evidence (task `p3-gate-green`)
+
+Phase 3 (Items tab rebuild) freeze. Ran the full Phase 3 gate set with
+`node tools/dev-workflow/run-gate.mjs 3`. Overall `pass: true`, process **exit 0**; all 6 required
+gates exit 0. `gates.mjs`/`phases.mjs` were consumed **exactly as defined — not edited**
+(`git diff --quiet tools/dev-workflow/gates.mjs tools/dev-workflow/phases.mjs` → `GATES_UNMODIFIED`).
+The only working-tree change to reach green was a Prettier reformat of two pre-existing Phase 3 files
+(`packages/ui/src/items/ItemInspector.tsx`, `packages/ui/test/items-components.test.tsx`) — pure
+line-wrapping, no logic/assertion change (the `items-unit` gate's 65 tests still pass).
+
+| Gate                 | required | status | exit | what it proves (this run)                                                            |
+| -------------------- | -------- | ------ | ---- | ------------------------------------------------------------------------------------ |
+| `format`             | true     | pass   | 0    | `pnpm -w format:check` → `All matched files use Prettier code style!`                |
+| `lint`               | true     | pass   | 0    | `pnpm -w lint` (eslint .) → no errors                                                |
+| `typecheck`          | true     | pass   | 0    | `pnpm -w typecheck` (`tsc -b`) compiles `@pob2/schema` + `@pob2/core-client`         |
+| `dev-workflow-tests` | true     | pass   | 0    | `@pob2/dev-workflow` — 38 tests / 11 files (JS guards + pipeline + visual-verify)    |
+| `parser-fixtures`    | true     | pass   | 0    | `@pob2/core-client test parser` — 13 tests (en + ko clipboard fixtures, §8.6)        |
+| `items-unit`         | true     | pass   | 0    | `@pob2/ui test items` — 65 tests / 3 files (items view-models + 3-region components) |
+
+These map to the Phase 3 **doneCriteria** (phases.mjs / DESIGN §18, §10.4, §8.6):
+
+- `기존 Items tab 주요 기능 parity` — the `items-unit` gate's 65 tests cover the §10.4 view-models
+  (equipped grid, library search/filter/sort, equip-delta) and the React components that render the
+  3-region layout (Equipped Gear grid | Item Library search | Inspector), item cards (rarity color
+  key as a `data-rarity` attribute — never color-only, requirement chips, mod summary, +DPS/-EHP
+  delta chips), item-set selector, clipboard import, custom-item form, and the §11.3 unsupported-mod
+  badge (icon + text label). NO-FALLBACK: a `missing` delta renders a distinct marker, never a fake 0.
+- `한국어 아이템 붙여넣기 MVP 지원` — the `parser-fixtures` gate runs real English AND Korean
+  (`ko-*.txt`) clipboard fixtures through `items.parseClipboard`: it asserts the corpus covers both
+  source locales (`en-US` + `ko-KR`) and all four rarities, pins each fixture's detected locale / base /
+  rarity / parsed mods / unsupported lines, and **measures the Korean paste parse success rate against
+  the §8.7 MVP target (70%+)** with untranslated lines preserved as `unsupported` (§8.6). A stub cannot
+  false-pass — the success-rate assertion fails unless real Korean base/rarity/mod → internal-id
+  mapping happens.
+
+Recorded exit codes (from this `run-gate 3` invocation): the process exit code is **0**, and each
+gate's `evidence` line begins `exit=0`.
+
+### `/items` VISUAL screen (gates.mjs `VISUAL[3]`) — 🚩 best-effort visual verify
+
+The §10.4 `/items` screen was verified via the spec §6 path: **build → serve → Playwright screenshot →
+vision** (`humanGate: visual` → best-effort + FLAG per spec §2/§6, NOT deferred to a human gate).
+The production `/items` route (`main.tsx`) drives `ItemsPanel` from a LIVE Tauri-IPC core session, which
+a static serve has no runner for — so a SAFE **fixture harness** (spec §2: fixtures, not live network)
+mounted the REAL `@pob2/ui` `AppShell` + `ItemsPanel` (built via the workspace, `@pob2/ui/styles.css`
+bundled) with §10.4 representative data: a Unique/Magic/Rare/Normal equipped set + a `+TotalDPS`/`-TotalEHP`
+equip-delta on the Rare boots and body, a multi-rarity item library, and item sets. Served on a static
+http server, screenshot at 1366×768 and 1366×1100 via `tools/dev-workflow/visual-verify.mjs`
+(Playwright chromium). The transient harness + dist were removed after capture (working tree clean —
+only the two Prettier files changed). Both `VISUAL[3].assert` facts verified:
+
+1. **Items 3-region: equipped gear grid | item library search | inspector (§10.4)** — PASS. Three
+   side-by-side headed regions: `장착 장비 (Equipped Gear)` slot-card grid (Weapon 1/2, Helmet, Body
+   Armour, Gloves, Boots, Ring 1…); `아이템 라이브러리 (Item Library)` with a search box +
+   Slot/Type/Requirements filter controls + result rows; `인스펙터 (Inspector)` with the
+   `검토할 아이템을 선택하세요 (Select an item to inspect)` empty state.
+2. **Item cards show rarity color + base type + +DPS/-EHP delta chips** — PASS. Per-card rarity color:
+   Voidforge orange (unique), Hale Visage blue (magic), Carapace of Sorrow / Sorrow Sole yellow (rare);
+   base-type line on each card (Infernal Sword, Expert Spiked Helm, Advanced Plate Vest, Hunting Shoes).
+   Delta chips: Body Armour shows green `TotalDPS +42` + `TotalEHP +340`; Boots shows green
+   `TotalDPS +12.4` AND red `TotalEHP -31` — both gain (green) and loss (red) directions on screen.
+   Left nav rail (Overview/Skills/Items/…) present with Items highlighted; Korean labels carry English
+   parenthetical aliases throughout (§8.1).
+
+🚩 **p3/gemini-vision-unavailable** (Phase 3, visual verifier) — gemini-vision OAuth is still not
+configured in this env (no antigravity accounts file), so the engine could not LLM-attest the screenshot.
+Resolved per spec §6.1 fallback: the driver verified `/tmp/pob-3-items-tall.png` by **direct Claude
+vision** — both §10.4 `VISUAL[3]` asserts hold (3-region layout; rarity color + base type + green-gain /
+red-loss +DPS/-EHP chips). Same env limit recorded as `p2/gemini-vision-unavailable`; configure
+antigravity OAuth for the "precise" verifier — not required for the gate.
+
+### CARRYOVER→Phase 3 blocker — RESOLVED
+
+The Phase 2 review's **CARRYOVER→Phase 3 — core bridge over Tauri IPC** blocker (the shipped app could
+not open a build / run calc because `main.tsx` rendered `<App/>` with no session and the real
+`CoreClient` uses `node:child_process`, which cannot run inside the Tauri WebView) is **resolved**:
+`apps/desktop/src/main.tsx` now mounts `<App session={createBuildSession(createIpcCoreClient())} />`,
+so the desktop app drives Overview/Items from **live stats** by routing `build.load` / `calc.run` /
+`build.save` through the Rust host's allowlisted `core_request` IPC command instead of the Node child
+process (commit `476ad88` "core bridge over Tauri IPC"). The Items tab is wired end to end on top of it:
+the Open command refreshes the §10.4 equipped grid from `session.getEquipped()`, and the §11.1
+"아이템 붙여넣기 (Paste Item)" command reads clipboard text, parses it through `session.parseClipboard`,
+stages it in the Items inspector, and switches to the Items tab (`apps/desktop/src/App.tsx`).
+
 ## 🚩 Flag log
 
 _(human-gate decisions made autonomously — review later)_
+
+- **p3-client-items/runner-gaps** (Phase 3, `p3-client-items`) — Added `getEquipped`/`createCustom`/
+  `equipDelta` to `CoreClient` (`packages/core-client/src/index.ts`), each validating
+  request+response against `schemaRegistry` (DESIGN §6.4). `getEquipped` and `equipDelta` are real
+  end to end against the live runner (sample-build → equipped Runeforged Warpick card). One
+  **documented gap** remains (NO-FALLBACK, never faked): the runner does not implement
+  `items.createCustom` yet, so a well-formed `createCustom` request surfaces a structured
+  `CoreClientError` (`UPSTREAM_INCOMPATIBLE`, JSON-RPC `-32601` method-not-found) instead of a
+  fabricated card — the request-side schema validation still runs. **Resolve when** a
+  `p3-lua-createCustom` runner task lands an item-build path.
+
+- **p3-review/equip-delta-real** (Phase 3 adversarial review, RESOLVED) — The earlier `equipDelta`
+  was a stub: it ran `calc.run` TWICE on the SAME live build and diffed the (identical) results, so
+  every `EquipDelta` was structurally **always 0** — the exact "comparing A with A" bug the core's
+  own `Calcs.lua:140-142` was written to avoid. The named Phase 3 task "item equip delta" (DESIGN
+  §10.4 "+DPS / -EHP", §16.3) was therefore non-functional despite the core fully supporting the
+  computation. **Fixed via TDD:** added a runner-backed `items.compare(buildId, itemId, slot)` to
+  `overlays/lua/modern_api.lua` (registered in `runner.lua`) that drives the core's OWN non-mutating
+  comparison machinery — `build.calcsTab:GetMiscCalculator()` returns `(calcFunc, baseOutput)` and
+  `calcFunc({ repSlotName = slot, repItem = item })` recomputes the full output as if the item
+  occupied the slot, WITHOUT mutating the build (the same path `ItemsTab.lua:2148-2150` uses for its
+  tooltip deltas). `CoreClient.equipDelta` now routes through this single schema-validated RPC. The
+  `before` side is the real live baseline (proven: fixture Life=65 / TotalDPS≈8.16 baselines are
+  reported, not 0); equipping the item already in its slot is a real measured 0, a different item
+  differs. Spec: `spec/modern_api_items_spec.lua` (14 cases, +7). Removed the now-orphaned
+  `diffStats` helper and the two `validateRequestPublic`/`validateResponsePublic` passthroughs in
+  `runner-client.ts` that only the old two-pass path needed. The WebView IPC adapter
+  (`apps/desktop/src/core-ipc-client.ts` — the transport the SHIPPED app uses) carried the SAME
+  always-0 two-pass stub and was fixed identically to route through `items.compare`.
+
+- **p3-review/getequipped-allowlist** (Phase 3 adversarial review, RESOLVED, BLOCKING) — The Rust IPC
+  bridge `ALLOWED_METHODS` (`apps/desktop/src-tauri/src/core_bridge.rs`) did NOT include
+  `items.getEquipped`, yet `App.tsx` calls `session.getEquipped()` after every Open and the WebView
+  IPC client routes it through `core_request`. So in the REAL shipped app, the §10.4 equipped-gear
+  grid (a headline Phase 3 deliverable) was refused as `UPSTREAM_INCOMPATIBLE` and could never load —
+  masked because the desktop component tests inject a mock client and the visual gate used a static
+  fixture harness, neither of which exercises the live Rust IPC route. **Fixed:** added
+  `items.getEquipped` + `items.compare` to `ALLOWED_METHODS` and added a live Rust integration test
+  (`items_getequipped_and_compare_route_through_the_bridge`) that drives both through the real bridge
+  end to end (12 Rust tests pass).
 
 - **CARRYOVER→Phase 3 — core bridge over Tauri IPC** (Phase 2 review, ARCHITECTURAL) — The shipped
   desktop app cannot actually open a build / run calc yet: `apps/desktop/src/main.tsx` renders
