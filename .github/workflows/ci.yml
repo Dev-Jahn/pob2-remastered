@@ -83,8 +83,12 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Vitest + Playwright
-        run: echo "::notice::TODO Phase 2+ — Vitest unit + Playwright smoke (DESIGN.md §16)."
+      - name: Web build (@pob2/desktop)
+        run: pnpm --filter @pob2/desktop build
+      - name: UI unit tests (@pob2/ui)
+        run: pnpm --filter @pob2/ui test
+      - name: i18n toggle test (@pob2/desktop)
+        run: pnpm --filter @pob2/desktop test i18n
 
   package:
     name: Package (${{ matrix.os }})

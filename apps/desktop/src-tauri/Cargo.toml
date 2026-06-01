@@ -1,0 +1,33 @@
+# Tauri Rust host crate for @pob2/desktop (DESIGN §5.1 "Rust host layer", §14
+# "보안 설계"). Self-contained (no Cargo workspace at repo root); built/checked
+# via `cargo --manifest-path apps/desktop/src-tauri/Cargo.toml`.
+[package]
+name = "pob2-desktop"
+version = "0.0.0"
+description = "PoB2 Remastered desktop host (Tauri shell, IPC, file I/O)"
+edition = "2021"
+rust-version = "1.77"
+license = "MIT"
+publish = false
+
+# main.rs is the binary entry; lib.rs holds run() + the allowlisted IPC commands
+# and the pure helpers covered by `cargo test` (DESIGN §14.2 file validation).
+[lib]
+name = "pob2_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "pob2-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# default Tauri feature for production (custom protocol) vs. dev (devtools etc.).
+custom-protocol = ["tauri/custom-protocol"]

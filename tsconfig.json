@@ -1,5 +1,10 @@
 {
   "//": "Solution-style root config. Add each composite TS package to references as it is created.",
   "files": [],
-  "references": [{ "path": "packages/schema" }, { "path": "packages/core-client" }]
+  "references": [
+    { "path": "packages/schema" },
+    { "path": "packages/core-client" },
+    { "path": "packages/ui" },
+    { "path": "apps/desktop" }
+  ]
 }
