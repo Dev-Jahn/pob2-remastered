@@ -7,6 +7,13 @@ const BASE = [
   { name: 'format', kind: 'shell', required: true, cmd: `${REPO} format:check` },
   { name: 'lint', kind: 'shell', required: true, cmd: `${REPO} lint` },
   { name: 'typecheck', kind: 'shell', required: true, cmd: `${REPO} typecheck` },
+  // Guards + pipeline correctness must not regress in any later phase (Phase 0 review §).
+  {
+    name: 'dev-workflow-tests',
+    kind: 'shell',
+    required: true,
+    cmd: 'pnpm --filter @pob2/dev-workflow test',
+  },
 ];
 const visual = (name, screen) => ({
   name: `visual:${name}`,

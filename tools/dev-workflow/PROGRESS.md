@@ -9,21 +9,22 @@
 ## State
 
 - Pipeline: ✓ built & self-verified (commit 037cced — format/lint/typecheck/15 tests green)
-- Current phase: **0** (Core runner boot PoC) — ✓ done on `feat/phase-0-core-runner`
-- Note: upstream `HeadlessWrapper.lua` present → Phase 0 tractable
+- Phase 0: ✓ done — squash-merged to `main` (97c5b13), pushed
+- Current phase: **1** (Core bridge MVP) — in progress on `feat/phase-1-core-bridge`
+- Note: upstream `HeadlessWrapper.lua` present; share-code deflate is a Phase 1 dependency
 
 ## Phase ledger
 
-| Phase | Status  | Gate evidence                                      | 🚩Flags | Blockers |
-| ----- | ------- | -------------------------------------------------- | ------- | -------- |
-| 0     | done    | `run-gate 0` pass; gates+exit codes recorded below | 1       |          |
-| 1     | pending |                                                    |         |          |
-| 2     | pending |                                                    |         |          |
-| 3     | pending |                                                    |         |          |
-| 4     | pending |                                                    |         |          |
-| 5     | pending |                                                    |         |          |
-| 6     | pending |                                                    |         |          |
-| 7     | pending |                                                    |         |          |
+| Phase | Status      | Gate evidence                                      | 🚩Flags | Blockers |
+| ----- | ----------- | -------------------------------------------------- | ------- | -------- |
+| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below | 1       |          |
+| 1     | in progress |                                                    |         |          |
+| 2     | pending     |                                                    |         |          |
+| 3     | pending     |                                                    |         |          |
+| 4     | pending     |                                                    |         |          |
+| 5     | pending     |                                                    |         |          |
+| 6     | pending     |                                                    |         |          |
+| 7     | pending     |                                                    |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -55,6 +56,12 @@ no binary blob vendored, same policy as the lua-utf8 runtime dep.
 ## 🚩 Flag log
 
 _(human-gate decisions made autonomously — review later)_
+
+- **driver/gate-hardening** (Phase 0 review follow-up) — Added `dev-workflow-tests` to the BASE
+  gate set so the JS guards + pipeline tests cannot silently regress in Phases 1–7 (the Phase 0
+  review noted the gate didn't run them). **Deferred:** gating the busted Lua specs — env-fragile
+  (needs `eval "$(luarocks --local path)"` + `~/.luarocks/bin` on PATH); the headless core boot is
+  already gated via `core-runner-boot`. Revisit with a stable lua-test wrapper.
 
 - **p0-gate-green** (gate: `gamedata`) — Recorded the Phase 0 doneCriteria checkpoint above from
   a real `run-gate 0` run (no live network, fixture-only): both required gates pass at exit 0 and
