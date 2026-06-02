@@ -14,8 +14,8 @@
 - Phase 2: ✓ done — squash-merged to `main` (c2e43b9), pushed
 - Phase 3: ✓ done — squash-merged to `main` (6800500), pushed; **core-bridge CARRYOVER resolved** (app runs core over Tauri IPC); equip-delta fake-feature caught+fixed by review
 - Phase 4: ✓ done — squash-merged to `main` (0459ed0), pushed; review fixed a real config-preset var bug
-- Phase 5: ✓ done — `run-gate 5` green (5/5 required, exit 0) on `feat/phase-5-passive-tree`; `/tree` visual verified (direct vision)
-- Current phase: **6** (한국어 PoB2 / localization) — pending
+- Phase 5: ✓ done — squash-merged to `main` (1b03333), pushed; review fixed live /tree edge connectivity
+- Current phase: **6** (한국어 PoB2 / localization) — in progress on `feat/phase-6-localization`
 - Env: Rust toolchain provisioned (cargo 1.96, user-space `~/.cargo`, reachable in login shell);
   `webkit2gtk-4.1` dev libs already present → Tauri buildable; Playwright chromium present → visual gates live
 - TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in
@@ -25,16 +25,16 @@
 
 ## Phase ledger
 
-| Phase | Status  | Gate evidence                                                             | 🚩Flags | Blockers |
-| ----- | ------- | ------------------------------------------------------------------------- | ------- | -------- |
-| 0     | done    | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
-| 1     | done    | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
-| 2     | done    | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
-| 3     | done    | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
-| 4     | done    | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below | 1       |          |
-| 5     | done    | `run-gate 5` pass (5/5 required, exit 0); `/tree` visual verified; below  | 1       |          |
-| 6     | pending |                                                                           |         |          |
-| 7     | pending |                                                                           |         |          |
+| Phase | Status      | Gate evidence                                                             | 🚩Flags | Blockers |
+| ----- | ----------- | ------------------------------------------------------------------------- | ------- | -------- |
+| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
+| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
+| 2     | done        | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
+| 3     | done        | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
+| 4     | done        | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below | 1       |          |
+| 5     | done        | `run-gate 5` pass (5/5 required, exit 0); `/tree` visual verified; below  | 1       |          |
+| 6     | in progress |                                                                           |         |          |
+| 7     | pending     |                                                                           |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
