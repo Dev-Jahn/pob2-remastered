@@ -107,3 +107,35 @@ Releases must ship `LICENSE`, `NOTICE.md`, this file, and component version
 manifests (`DESIGN.md` §17.2). Per `DESIGN.md` §15.3, every release artifact
 includes this `DATA_SOURCES.md`, so the PoE2DB importer's mapping-only /
 attribution / `do_not_bundle` policy above travels with each release.
+
+## Asset-bundling release sequence (Tauri packaging)
+
+The icon bytes live in the **gitignored** cache at `packages/localization/.cache/icons/`.
+The following sequence must be run in the **main working tree** (where `.cache/icons/` is
+populated) before `tauri build`:
+
+```bash
+# 1. Stage assets into the Tauri resources directory.
+#    This step is FAIL-CLOSED: it calls the asset-gate integrity check internally.
+#    Any missing or hash-mismatched cached icon aborts the run — nothing is copied.
+pnpm --filter @pob2/localization stage-assets
+
+# 2. Build the Tauri app (resources/assets/ is now populated).
+cargo tauri build
+```
+
+**What `stage-assets` does:**
+- Reads `packages/localization/assets/asset-manifest.json` (the committed AssetRef manifest).
+- Calls `validateManifest(manifest, { assetRoot: '.cache' })` (sha256 integrity check) — NO-FALLBACK.
+- On success, copies each `{assetRoot}/{localPath}` → `apps/desktop/src-tauri/resources/assets/{localPath}`.
+- Writes `apps/desktop/src-tauri/resources/assets/asset-index.json` mapping `{ [assetId]: localPath }`
+  so the app can resolve a term ID to its bundled icon path at runtime.
+
+**Dry-run (schema check only, no integrity, no copy):**
+```bash
+node packages/localization/scripts/stage-assets.mjs --dry-run
+```
+
+The staged `resources/assets/` directory is gitignored — it is a derived artifact. The manifest +
+`.cache/icons/` are the source of truth. `tauri.conf.json` bundles it via `bundle.resources`:
+`["resources/assets/**/*"]` (path relative to `src-tauri/`).

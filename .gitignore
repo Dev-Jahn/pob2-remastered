@@ -53,3 +53,6 @@ luacov.report.out
 
 # Note: vendor/ is a git submodule and is intentionally tracked.
 packages/localization/.cache/
+
+# Tauri staged assets (derived from manifest + .cache; not committed — run stage-assets at release time).
+apps/desktop/src-tauri/resources/
