@@ -34,8 +34,9 @@ import type {
   GemInput,
   ItemsParseClipboardResponse,
   SkillsGetGroupsResponse,
+  TreeGetDataResponse,
 } from '@pob2/schema';
-import { createBuildSession, type BuildClient } from './build-session.js';
+import { createBuildSession, treeResponseToGraph, type BuildClient } from './build-session.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // apps/desktop/src -> repo root
@@ -205,6 +206,27 @@ function mockClient(): BuildClient & {
     async explainStat(buildId: string, statId: string, activeSkillId?) {
       calls.push({ method: 'explainStat', arg: { buildId, statId, activeSkillId } });
       return SAMPLE_EXPLAIN;
+    },
+    // The §10.6 Passive Tree client surface (DESIGN §6.3 tree.getData/previewAllocate/
+    // applyAllocate). Exercised by the tree-handler suite in App.tree.test.tsx; here
+    // they return empty/no-op shapes so the mock satisfies the BuildClient contract.
+    async getTreeData(buildId: string) {
+      calls.push({ method: 'getTreeData', arg: buildId });
+      return {
+        treeVersion: '',
+        nodes: [],
+        groups: [],
+        constants: { classes: {}, orbitAnglesByOrbit: [], orbitRadii: [], skillsPerOrbit: [] },
+        allocatedNodeIds: [],
+      };
+    },
+    async previewAllocate(buildId: string, nodeIds: number[]) {
+      calls.push({ method: 'previewAllocate', arg: { buildId, nodeIds } });
+      return { deltas: [] };
+    },
+    async applyAllocate(buildId: string, nodeIds: number[]) {
+      calls.push({ method: 'applyAllocate', arg: { buildId, nodeIds } });
+      return { allocatedNodeIds: [] };
     },
   };
 }
@@ -473,5 +495,62 @@ describe('build-session — mutate then recalc (DESIGN §6.3 빌드 수정 → �
 
     await expect(session.setConfigOption('enemyIsBoss', 'None')).rejects.toThrow();
     expect(client.calls).toEqual([]);
+  });
+});
+
+// The §10.6 renderer paints the connecting edges and the path-preview walks the
+// graph — both need the edge list derived from each node's `connections` (core
+// `node.linkedId`). If the transform dropped the edges, the shipped /tree canvas
+// would render disconnected floating discs and path-preview would be dead. This
+// guards the live transform (DESIGN §10.6, §6.4 NO phantom edge).
+describe('build-session — treeResponseToGraph edge derivation (DESIGN §10.6)', () => {
+  function node(nodeId: number, connections: number[]): TreeGetDataResponse['nodes'][number] {
+    return {
+      nodeId,
+      name: `n${nodeId}`,
+      type: 'Normal',
+      x: nodeId * 10,
+      y: 0,
+      orbit: 0,
+      orbitIndex: 0,
+      group: 1,
+      isAscendancy: false,
+      connections,
+    };
+  }
+
+  it('derives a deduplicated undirected edge list from node connections', () => {
+    const response: TreeGetDataResponse = {
+      treeVersion: '0_5',
+      // 1—2—3 chain; the 1↔2 link is declared from BOTH ends (must dedup to one edge).
+      nodes: [node(1, [2]), node(2, [1, 3]), node(3, [2])],
+      groups: [{ groupId: 1, x: 0, y: 0 }],
+      constants: { classes: {}, orbitAnglesByOrbit: [], orbitRadii: [], skillsPerOrbit: [] },
+      allocatedNodeIds: [1],
+    };
+
+    const { graph } = treeResponseToGraph(response);
+
+    // Two undirected edges, normalized a<b, the 1↔2 pair deduped to a single edge.
+    expect(graph.edges).toEqual([
+      { a: 1, b: 2 },
+      { a: 2, b: 3 },
+    ]);
+  });
+
+  it('drops self-edges and connections to nodes absent from the graph (NO phantom edge)', () => {
+    const response: TreeGetDataResponse = {
+      treeVersion: '0_5',
+      // node 1 links to itself (self-edge) and to 999 (not in the graph) — both dropped;
+      // only the real 1↔2 edge survives.
+      nodes: [node(1, [1, 999, 2]), node(2, [1])],
+      groups: [{ groupId: 1, x: 0, y: 0 }],
+      constants: { classes: {}, orbitAnglesByOrbit: [], orbitRadii: [], skillsPerOrbit: [] },
+      allocatedNodeIds: [],
+    };
+
+    const { graph } = treeResponseToGraph(response);
+
+    expect(graph.edges).toEqual([{ a: 1, b: 2 }]);
   });
 });

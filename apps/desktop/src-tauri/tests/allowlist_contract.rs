@@ -47,7 +47,7 @@ use pob2_desktop_lib::core_bridge::ALLOWED_METHODS;
 /// Phase 4 read methods (`skills.getGroups`, `config.getOptions`, `calc.explain`)
 /// land via the registry; the write companions (`skills.setGemGroup`,
 /// `config.setOption`) land as bridge-wire additions above.
-const EXPECTED_ALLOWED_METHODS: [&str; 12] = [
+const EXPECTED_ALLOWED_METHODS: [&str; 15] = [
     // ready handshake (bridge-wire only, not an MVP/registry method)
     "core.version",
     // schema-registry / MVP method set, minus the not-yet-routed items.createCustom
@@ -60,6 +60,12 @@ const EXPECTED_ALLOWED_METHODS: [&str; 12] = [
     "items.compare",
     "skills.getGroups",
     "config.getOptions",
+    // Phase 5 Passive Tree query/allocate: full request+response schema-registry
+    // methods (DESIGN §6.3 tree.getData/previewAllocate/applyAllocate, §10.6), routed
+    // by the bridge and called by the IPC client after every Open.
+    "tree.getData",
+    "tree.previewAllocate",
+    "tree.applyAllocate",
     // Phase 4 write companions: routed by the bridge, request-only type stubs (not
     // yet in the schema registry), so bridge-wire additions like core.version.
     "skills.setGemGroup",
@@ -102,12 +108,13 @@ fn allowlist_matches_the_schema_registry_method_set() {
 /// Pin the exact count so a method added to `ALLOWED_METHODS` without a matching
 /// `EXPECTED_ALLOWED_METHODS` update (or vice-versa) is caught even if a future
 /// edit accidentally makes the two sets coincidentally overlap. Phase 4 wired the
-/// skills/config/calc.explain methods, taking the bridge surface from 7 to 12.
+/// skills/config/calc.explain methods (7 → 12); Phase 5 wired the tree
+/// query/allocate methods (12 → 15).
 #[test]
-fn allowlist_has_exactly_twelve_methods_after_phase_4() {
+fn allowlist_has_exactly_fifteen_methods_after_phase_5() {
     assert_eq!(
         ALLOWED_METHODS.len(),
-        12,
+        15,
         "ALLOWED_METHODS count changed: when a method is wired into / out of the IPC \
          client, update BOTH core_bridge::ALLOWED_METHODS and EXPECTED_ALLOWED_METHODS \
          in this guard together."

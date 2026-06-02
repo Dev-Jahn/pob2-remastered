@@ -169,6 +169,15 @@ local METHODS = {
 	["config.setOption"] = function(params)
 		return getApi().config.setOption(params and params.buildId, params and params.optionId, params and params.value)
 	end,
+	["tree.getData"] = function(params)
+		return getApi().tree.getData(params and params.buildId)
+	end,
+	["tree.previewAllocate"] = function(params)
+		return getApi().tree.previewAllocate(params and params.buildId, params and params.nodeIds)
+	end,
+	["tree.applyAllocate"] = function(params)
+		return getApi().tree.applyAllocate(params and params.buildId, params and params.nodeIds)
+	end,
 }
 
 local function ok(id, result)

@@ -226,6 +226,98 @@ const explainSourceSchema = {
   additionalProperties: false,
 } as const satisfies JSONSchema;
 
+/**
+ * TreeNode — one serialized passive-tree node card (DESIGN §6.3 tree.getData,
+ * §10.6). Mirrors the runner's `serializeNode`: `nodeId`/`group` are numeric core
+ * ids; `name`/`type` are display strings; `x`/`y`/`orbit`/`orbitIndex` are the
+ * orbit-derived layout numbers; `isAscendancy` flags ascendancy-tree nodes;
+ * `connections` is the node's edge graph (core `node.linkedId`) the §10.6 renderer
+ * derives the connecting edges from.
+ */
+const treeNodeSchema = {
+  type: 'object',
+  required: [
+    'nodeId',
+    'name',
+    'type',
+    'x',
+    'y',
+    'orbit',
+    'orbitIndex',
+    'group',
+    'isAscendancy',
+    'connections',
+  ],
+  properties: {
+    nodeId: { type: 'number' },
+    name: { type: 'string' },
+    type: { type: 'string' },
+    x: { type: 'number' },
+    y: { type: 'number' },
+    orbit: { type: 'number' },
+    orbitIndex: { type: 'number' },
+    group: { type: 'number' },
+    isAscendancy: { type: 'boolean' },
+    connections: { type: 'array', items: { type: 'number' } },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+/**
+ * TreeGroup — one serialized passive-tree group card (DESIGN §6.3 tree.getData).
+ * Mirrors the runner's `serializeTreeGroup`: the numeric group id plus its layout
+ * coordinates.
+ */
+const treeGroupSchema = {
+  type: 'object',
+  required: ['groupId', 'x', 'y'],
+  properties: {
+    groupId: { type: 'number' },
+    x: { type: 'number' },
+    y: { type: 'number' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+/**
+ * TreeConstants — the passive-tree layout constants (DESIGN §6.3 tree.getData,
+ * §6.4). Mirrors the runner's `serializeConstants`: `classes` is a {name → numeric
+ * class id} map; `orbitAnglesByOrbit`/`orbitRadii`/`skillsPerOrbit` are the pure
+ * layout tables, left unconstrained (nested per-orbit lists) but required to be
+ * present. Open (`additionalProperties` unset) — the constants block is a faithful
+ * deep copy of the tree-data constants and may carry future layout fields.
+ */
+const treeConstantsSchema = {
+  type: 'object',
+  required: ['classes', 'orbitAnglesByOrbit', 'orbitRadii', 'skillsPerOrbit'],
+  properties: {
+    classes: { type: 'object' },
+    orbitAnglesByOrbit: {},
+    orbitRadii: {},
+    skillsPerOrbit: {},
+  },
+} as const satisfies JSONSchema;
+
+/**
+ * TreeStatDelta — one stat's before/after change from a tree allocation preview
+ * (DESIGN §6.3 tree.previewAllocate, §7.4 "passive allocation delta"). Same flat
+ * shape as EquipDelta.
+ */
+const treeStatDeltaSchema = {
+  type: 'object',
+  required: ['statId', 'before', 'after', 'delta'],
+  properties: {
+    statId: { type: 'string' },
+    before: { type: 'number' },
+    after: { type: 'number' },
+    delta: { type: 'number' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+/** A numeric passive-tree node id list (request `nodeIds`, response allocated set). */
+const nodeIdListSchema = { type: 'array', items: { type: 'number' } } as const satisfies JSONSchema;
+
 // ----------------------------------------------------------------------------
 // CoreError envelope (DESIGN §6.4)
 // ----------------------------------------------------------------------------
@@ -592,6 +684,96 @@ const calcExplainResponseSchema = {
 } as const satisfies JSONSchema;
 
 // ----------------------------------------------------------------------------
+// tree.getData
+// ----------------------------------------------------------------------------
+
+const treeGetDataRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:tree.getData:request',
+  title: 'TreeGetDataRequest',
+  type: 'object',
+  required: ['buildId'],
+  properties: {
+    buildId: { type: 'string' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const treeGetDataResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:tree.getData:response',
+  title: 'TreeGetDataResponse',
+  type: 'object',
+  required: ['treeVersion', 'nodes', 'groups', 'constants', 'allocatedNodeIds'],
+  properties: {
+    treeVersion: { type: 'string' },
+    nodes: { type: 'array', items: treeNodeSchema },
+    groups: { type: 'array', items: treeGroupSchema },
+    constants: treeConstantsSchema,
+    allocatedNodeIds: nodeIdListSchema,
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
+// tree.previewAllocate
+// ----------------------------------------------------------------------------
+
+const treePreviewAllocateRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:tree.previewAllocate:request',
+  title: 'TreePreviewAllocateRequest',
+  type: 'object',
+  required: ['buildId', 'nodeIds'],
+  properties: {
+    buildId: { type: 'string' },
+    nodeIds: nodeIdListSchema,
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const treePreviewAllocateResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:tree.previewAllocate:response',
+  title: 'TreePreviewAllocateResponse',
+  type: 'object',
+  required: ['deltas'],
+  properties: {
+    deltas: { type: 'array', items: treeStatDeltaSchema },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
+// tree.applyAllocate
+// ----------------------------------------------------------------------------
+
+const treeApplyAllocateRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:tree.applyAllocate:request',
+  title: 'TreeApplyAllocateRequest',
+  type: 'object',
+  required: ['buildId', 'nodeIds'],
+  properties: {
+    buildId: { type: 'string' },
+    nodeIds: nodeIdListSchema,
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const treeApplyAllocateResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:tree.applyAllocate:response',
+  title: 'TreeApplyAllocateResponse',
+  type: 'object',
+  required: ['allocatedNodeIds'],
+  properties: {
+    allocatedNodeIds: nodeIdListSchema,
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
 // Registry — the shared source of truth (method → request/response schema)
 // ----------------------------------------------------------------------------
 
@@ -602,8 +784,9 @@ export interface SchemaEntry {
 
 /**
  * The MVP methods named in `tools/dev-workflow/phases.mjs`, plus the items.*
- * expansion (DESIGN §6.3 items.getEquipped/createCustom/compare) and the Phase 4
- * read methods (DESIGN §6.3 skills.getGroups/config.getOptions/calc.explain).
+ * expansion (DESIGN §6.3 items.getEquipped/createCustom/compare), the Phase 4
+ * read methods (DESIGN §6.3 skills.getGroups/config.getOptions/calc.explain), and
+ * the Phase 5 tree methods (DESIGN §6.3 tree.getData/previewAllocate/applyAllocate).
  */
 export const MVP_METHODS = [
   'build.load',
@@ -616,6 +799,9 @@ export const MVP_METHODS = [
   'items.compare',
   'skills.getGroups',
   'config.getOptions',
+  'tree.getData',
+  'tree.previewAllocate',
+  'tree.applyAllocate',
 ] as const satisfies readonly MvpMethod[];
 
 /**
@@ -664,5 +850,17 @@ export const schemaRegistry: Record<MvpMethod, SchemaEntry> = {
   'config.getOptions': {
     requestSchema: configGetOptionsRequestSchema,
     responseSchema: configGetOptionsResponseSchema,
+  },
+  'tree.getData': {
+    requestSchema: treeGetDataRequestSchema,
+    responseSchema: treeGetDataResponseSchema,
+  },
+  'tree.previewAllocate': {
+    requestSchema: treePreviewAllocateRequestSchema,
+    responseSchema: treePreviewAllocateResponseSchema,
+  },
+  'tree.applyAllocate': {
+    requestSchema: treeApplyAllocateRequestSchema,
+    responseSchema: treeApplyAllocateResponseSchema,
   },
 };

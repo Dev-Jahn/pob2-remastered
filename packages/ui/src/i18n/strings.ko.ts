@@ -199,4 +199,15 @@ export const stringsKo: Record<StringKey, string> = {
   'calcs.source.supportGem': '보조 젬 (Support Gem)',
   'calcs.source.config': '설정 (Config)',
   'calcs.source.buff': '버프 (Buff)',
+
+  // Passive Tree tab (DESIGN §10.6). The §10.6 layout chrome: the central tree
+  // canvas, the minimap, the bilingual (한/영) node search box + its empty-results
+  // hint, the hovered-node tooltip ("이 노드를 찍으면 증가하는 stat") + the
+  // allocation-delta panel headings and the missing-stat marker (§6.4 NO-FALLBACK).
+  'tree.canvas': '트리 (Tree)',
+  'tree.minimap': '미니맵 (Minimap)',
+  'tree.search.placeholder': '노드 검색 한/영 (Search nodes)',
+  'tree.tooltip.title': '이 노드를 찍으면 증가하는 stat (Allocating this node increases)',
+  'tree.delta.title': '할당 변화 (Allocation Delta)',
+  'tree.delta.missing': '값 없음 (Not computed)',
 };

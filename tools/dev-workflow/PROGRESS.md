@@ -14,7 +14,8 @@
 - Phase 2: ✓ done — squash-merged to `main` (c2e43b9), pushed
 - Phase 3: ✓ done — squash-merged to `main` (6800500), pushed; **core-bridge CARRYOVER resolved** (app runs core over Tauri IPC); equip-delta fake-feature caught+fixed by review
 - Phase 4: ✓ done — squash-merged to `main` (0459ed0), pushed; review fixed a real config-preset var bug
-- Current phase: **5** (Passive Tree) — in progress on `feat/phase-5-passive-tree`
+- Phase 5: ✓ done — `run-gate 5` green (5/5 required, exit 0) on `feat/phase-5-passive-tree`; `/tree` visual verified (direct vision)
+- Current phase: **6** (한국어 PoB2 / localization) — pending
 - Env: Rust toolchain provisioned (cargo 1.96, user-space `~/.cargo`, reachable in login shell);
   `webkit2gtk-4.1` dev libs already present → Tauri buildable; Playwright chromium present → visual gates live
 - TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in
@@ -24,16 +25,16 @@
 
 ## Phase ledger
 
-| Phase | Status      | Gate evidence                                                             | 🚩Flags | Blockers |
-| ----- | ----------- | ------------------------------------------------------------------------- | ------- | -------- |
-| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
-| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
-| 2     | done        | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
-| 3     | done        | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
-| 4     | done        | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below | 1       |          |
-| 5     | in progress |                                                                           |         |          |
-| 6     | pending     |                                                                           |         |          |
-| 7     | pending     |                                                                           |         |          |
+| Phase | Status  | Gate evidence                                                             | 🚩Flags | Blockers |
+| ----- | ------- | ------------------------------------------------------------------------- | ------- | -------- |
+| 0     | done    | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
+| 1     | done    | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
+| 2     | done    | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
+| 3     | done    | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
+| 4     | done    | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below | 1       |          |
+| 5     | done    | `run-gate 5` pass (5/5 required, exit 0); `/tree` visual verified; below  | 1       |          |
+| 6     | pending |                                                                           |         |          |
+| 7     | pending |                                                                           |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -293,6 +294,134 @@ list + formula trace + upstream stat id, ko/en labels). Same env limit recorded 
 required for the gate. The `--check` path still asserts the painted DOM carries every assert fact
 deterministically (the four sections + `data-source-kind` + `data-formula`) so a blank/stub harness
 cannot false-pass before the vision read.
+
+## Phase 5 gate evidence (task `p5-gate-green`)
+
+Phase 5 (고성능 Passive Tree — DESIGN §10.6 / §16.3) freeze. Ran the full Phase 5 gate set with
+`node tools/dev-workflow/run-gate.mjs 5`. Overall `pass: true`, process **exit 0**; all 5 required
+gates exit 0 (the 4 BASE gates `format`/`lint`/`typecheck`/`dev-workflow-tests` + the Phase 5
+`tree-transform` gate). `gates.mjs`/`phases.mjs` were consumed **exactly as defined — not edited**
+(`git diff --quiet tools/dev-workflow/gates.mjs tools/dev-workflow/phases.mjs` → `GATES_UNMODIFIED`).
+The only working-tree change to reach green was a Prettier reformat of two pre-existing Phase 5 files
+(`packages/ui/src/tree/TreePanel.tsx`, `packages/ui/test/tree-panel.test.tsx`) — pure line-wrapping
+(minimap-props destructure + a `setViewport` updater wrap), no logic/assertion change; all 74
+`@pob2/ui` tree tests still pass.
+
+| Gate                 | required | status | exit | what it proves (this run)                                                            |
+| -------------------- | -------- | ------ | ---- | ------------------------------------------------------------------------------------ |
+| `format`             | true     | pass   | 0    | `pnpm -w format:check` → `All matched files use Prettier code style!`                |
+| `lint`               | true     | pass   | 0    | `pnpm -w lint` (eslint .) → no errors                                                |
+| `typecheck`          | true     | pass   | 0    | `pnpm -w typecheck` (`tsc -b`) compiles `@pob2/schema` + `@pob2/core-client`         |
+| `dev-workflow-tests` | true     | pass   | 0    | `@pob2/dev-workflow` — 51 tests / 14 files (JS guards + pipeline + VISUAL[5] verify) |
+| `tree-transform`     | true     | pass   | 0    | `@pob2/ui test tree` — 74 tests / 5 files (transform + view-model + canvas + perf)   |
+
+These map to the Phase 5 **doneCriteria** (phases.mjs / DESIGN §18, §10.6 / §16.3) — the sign-off
+rests on this doneCriteria → evidence mapping:
+
+- `기존 트리 기능 parity` (existing tree feature parity) — the `tree-transform` gate's 74 tests cover
+  the four §10.6 Passive Tree features end to end, each through the SHIPPED `@pob2/ui` primitives, so
+  a stub cannot false-pass:
+  - **검색 (node search)** — `buildNodeSearchIndex` builds a bilingual (한/영) prefix index over the
+    tree; `tree-model`/`tree-panel` tests assert a query resolves to real node docs and clicking a
+    result pans the canvas to centre that node (the §10.6 search→pan target). `tree-perf` builds the
+    index over the FULL 4863-node 0_5 tree and asserts a common stem resolves (not an empty index).
+  - **path preview (경로 미리보기)** — `previewPath` computes the shortest unallocated path from the
+    allocated frontier to a target node (BFS over the real edge graph); `tree-model` tests pin the
+    path nodes for representative allocate targets, and an unreachable target yields no fabricated
+    path (NO-FALLBACK).
+  - **allocation delta (할당 델타)** — `buildAllocationDeltaModel` turns the "이 노드를 찍으면
+    증가하는 stat" hover deltas into signed `{ direction, ... }` chips; a gain is `gain`, a drop is
+    `loss`, and a stat with no measured delta is `missing`, never a fabricated `0`. `TreePanel` feeds
+    the hovered node's `hoverDeltas` through it to paint the §10.6 delta panel.
+  - **렌더 (canvas render)** — `buildTreeGraph` transforms the core tree (groups + nodes + connections)
+    into a render-ready `TreeGraph` (node discs + edges + bounds + a node index); `TreeCanvas` draws
+    edges then node discs with pan/zoom and **viewport culling** (`visibleNodes` + `worldToScreen`),
+    and the canvas tests assert edges/nodes actually draw (the 2D context records `arc`/`lineTo`
+    calls) with allocated vs unallocated styling. The VISUAL[5] harness (below) confirms the live
+    canvas paints non-zero pixels.
+- `대규모 zoom/pan 성능 기준 충족 (DESIGN §16.3)` (large-scale zoom/pan performance budget) — the
+  **p5-tree-perf** benchmark (`packages/ui/test/tree-perf.test.ts`, in the `tree-transform` gate) is
+  the deterministic §16.3 assertion. It drives the SAME pure primitives the §10.6 renderer uses over
+  the FULL real 0_5 `tree.json` (**4863 nodes / 1572 groups**, the upstream gamedata fixture) and
+  asserts the two §16.3 budgets:
+  - **search response ≤ 50ms** — the bilingual index answers a node-search query (mean over 2000
+    warmed queries across many buckets, plus the single worst-case largest-result query) well under
+    the §16.3 50ms target.
+  - **pan/zoom 60 FPS (frame ≤ 16.6ms) with viewport culling** — one frame's render work
+    (`visibleNodes` cull + `worldToScreen` for every visible node + every edge with a visible
+    endpoint) finishes inside the 60 FPS budget BOTH at a normal working zoom (where the cull paints
+    only a small fraction of the 4863 nodes — the "보이는 노드만 그리는지" requirement) AND in the
+    worst case (zoomed to fit, every node on screen, cull saves nothing). The benchmark is
+    deterministic (no randomness/network/wall-clock beyond `performance.now`), so a genuine
+    regression (a dropped index, a disabled cull, an O(nodes²) frame) blows the budget by a wide
+    margin while host jitter never approaches it.
+
+Recorded exit codes (from this `run-gate 5` invocation): the process exit code is **0** (`run-gate.mjs`
+exits `0` iff no required gate `fail`ed), and each gate's `evidence` line begins `exit=0`. The
+`p5-gate-green` sign-off is guarded by `test/progress-phase5.test.mjs`, which derives the required gate
+names straight from `gates.mjs` (and asserts `tree-transform` is among them), asserts this row reads
+`done` with `exit=0` evidence, and pins the doneCriteria → evidence mapping (검색 / path preview /
+allocation delta / 렌더; the `p5-tree-perf` §16.3 assertion) plus the `gates.mjs`+`phases.mjs`-unmodified
+note and the VISUAL[5] result — so the recorded sign-off cannot silently regress and the guard cannot
+drift from the gate set.
+
+### `/tree` VISUAL screen (gates.mjs `VISUAL[5]`) — 🚩 best-effort visual verify (task `p5-tree-visual`)
+
+The §10.6 `/tree` screen was verified via the spec §6 path: **build → serve → Playwright screenshot →
+vision** (`humanGate: visual` → best-effort + FLAG per spec §2/§6, NOT deferred to a human gate). The
+production `/tree` route drives `TreePanel` from a LIVE Tauri-IPC core session (`tree.getData` +
+`tree.previewAllocate` + `tree.applyAllocate`), which a static serve has no runner for — so a SAFE
+**fixture harness** (spec §2: fixtures, not live network) mounts the REAL `@pob2/ui` `AppShell` +
+`TreePanel` (built through the desktop app's vite/react, `@pob2/ui/styles.css` bundled) with §10.6
+representative data that round-trips through the SHIPPED helpers — an abridged tree graph via
+`buildTreeGraph`, a bilingual search index via `buildNodeSearchIndex`, an `allocated` node set, and a
+hovered node's `hoverDeltas` — so the canvas paints allocated/unallocated nodes and the delta panel
+paints chips. Screenshots at 1366×768 and 1366×1100 via `node tools/dev-workflow/visual-verify.mjs
+--route /tree --check` (Playwright chromium). The transient harness + dist are removed after capture
+(`tmp-visual/` + `**/.visual-harness-*/` are gitignored), so the working tree stays clean. The
+`VISUAL[5].assert` fact verified:
+
+1. **Passive tree canvas renders nodes + edges; minimap present; node search box (§10.6)** — PASS.
+   `class="pob-tree-canvas"` canvas paints the node discs + connecting edges (the `--check` path reads
+   the live 2D context back and asserts `canvasPaintedPixels > 0`, so a blank canvas cannot false-pass);
+   a minimap (`data-minimap-viewport` rectangle tracking the main viewport) and a node search box
+   (`data-testid="tree-search"`) are present in the served DOM. 3-pane shell + left nav rail (Tree
+   highlighted); Korean labels carry English aliases (§8.1).
+
+🚩 **p5/gemini-vision-unavailable** (Phase 5, visual verifier) — gemini-vision OAuth is still not
+configured in this env (the script's accounts search at `~/.config/opencode/antigravity-accounts.json`
+and `~/.config/antigravity_auth/accounts.json` returns no antigravity dir), so the engine could not
+LLM-attest the screenshot. Resolved per spec §6.1 fallback: the driver verified the
+`tmp-visual/pob-tree-*.png` screenshots by **direct Claude vision** — the §10.6 `VISUAL[5]` assert holds
+(canvas nodes + edges; minimap; node search box). The `--check` path also deterministically asserts the
+painted DOM carries every assert fact (`pob-tree-canvas` + `data-minimap-viewport` +
+`data-testid="tree-search"`) AND that the live canvas painted non-zero pixels, so a blank/stub harness
+cannot false-pass before the vision read. Same env limit as `p2`/`p3`/`p4/gemini-vision-unavailable`;
+configure antigravity OAuth for the "precise" verifier — not required for the gate.
+
+### Phase 5 carryover / flags (CARRYOVER ledger at the `p5-gate-green` freeze)
+
+At the Phase 5 freeze (`run-gate 5` green, 5/5 required at exit 0, `gates.mjs`+`phases.mjs` unmodified)
+the open flags below are **carried forward into Phase 6**, not closed:
+
+- 🚩 **p5/gemini-vision-unavailable** (visual verifier, STILL-OPEN) — antigravity OAuth is not
+  configured in this env, so the `/tree` `VISUAL[5]` screen was attested by direct Claude vision (spec
+  §6.1 fallback), not the "precise" LLM verifier. Not required for the gate; configure antigravity OAuth
+  to close. Same env limit as `p2`/`p3`/`p4/gemini-vision-unavailable`.
+- 🚩 **p4/skills-tab-read-only** (CARRIED) — `App.tsx` still renders `SkillsPanel` without the
+  `onToggleGem`/`onToggleGroup` mutation callbacks, so in-app gem/support toggling is a no-op (the core
+  `skills.setGemGroup` path + the panel callbacks are wired and tested; only the App-level binding is
+  missing). Phase 5 did not touch the Skills tab. Wire when the Skills tab gets interactive polish.
+- 🚩 **p1/build-load-response-schema — BuildState gap** (CARRIED) — `build.load`'s response schema still
+  REQUIRES a full BuildState while the runner returns its plain `summary` (`validateResponse:false`).
+  Phase 5 added `tree.*` on top of the same session without closing this gap; the real BuildState
+  assembly is still owed (request side stays validated, no silent fallback).
+- 🚩 **CARRYOVER (Import/Export) — WebView share-code codec** (CARRIED) — the desktop WebView
+  `loadShareCode`/`saveShareCode` path still needs a browser-safe deflate; the `tree.*` live IPC methods
+  Phase 5 drives do not use it. Wire when the desktop Import/Export flow lands.
+- 🚩 **p3-client-items/runner-gaps — `items.createCustom`** (CARRIED) — the runner still does not
+  implement `items.createCustom`; a well-formed request surfaces a structured `UPSTREAM_INCOMPATIBLE`
+  (`-32601`) instead of a fabricated card. Resolve when a `p3-lua-createCustom` runner task lands.
 
 ### CARRYOVER→Phase 3 blocker — RESOLVED
 

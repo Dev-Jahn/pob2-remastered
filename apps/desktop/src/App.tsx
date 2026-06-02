@@ -26,7 +26,7 @@
  * vice versa (DESIGN §8.1, §10.1, §11.1/§11.2). When a session is injected, Open
  * and Save build commands (§10.9, §11.1 "빌드 내보내기") route through it.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppShell,
   CalcsPanel,
@@ -35,10 +35,12 @@ import {
   ItemsPanel,
   OverviewPanel,
   SkillsPanel,
+  TreePanel,
   WarningPanel,
   buildCalcsModel,
   buildConfigModel,
   buildEquippedGridModel,
+  buildNodeSearchIndex,
   buildOverviewModel,
   buildSkillGroupsModel,
   buildWarningModel,
@@ -54,14 +56,25 @@ import type {
   InspectedItem,
   Locale,
   NavTab,
+  NodeSearchDoc,
+  NodeSearchIndex,
+  TreeGraph,
 } from '@pob2/ui';
 import type {
   CalcExplainResponse,
   CalcRunResponse,
   ConfigGetOptionsResponse,
   SkillsGetGroupsResponse,
+  TreeStatDelta,
 } from '@pob2/schema';
 import type { BuildSession, OpenResult, OpenSource, SaveFormat } from './build-session.js';
+
+/**
+ * Debounce window (ms) for the §10.6 hover→previewAllocate fetch (DESIGN §10.6
+ * "노드 hover 시 tree.previewAllocate 호출을 debounce"). Hovering across the tree
+ * fires many hover events; only the last one within this window triggers a fetch.
+ */
+const TREE_HOVER_DEBOUNCE_MS = 120;
 
 /** No build is loaded yet, so the calc result carries no stats. */
 const EMPTY_CALC: CalcRunResponse = { buildId: '', stats: [] };
@@ -74,6 +87,34 @@ const EMPTY_SKILL_GROUPS: SkillsGetGroupsResponse = { groups: [] };
 
 /** No build is loaded yet, so the build has no config options (DESIGN §10.8). */
 const EMPTY_CONFIG_OPTIONS: ConfigGetOptionsResponse = { options: [] };
+
+/** No build is loaded yet, so the passive tree has no nodes (DESIGN §10.6, §6.4). */
+const EMPTY_TREE_GRAPH: TreeGraph = {
+  nodes: [],
+  edges: [],
+  bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+  nodeIndex: {},
+};
+
+/** No build is loaded yet, so the node search index is empty (DESIGN §10.6, §11.2). */
+const EMPTY_TREE_INDEX: NodeSearchIndex = buildNodeSearchIndex([]);
+
+/**
+ * Build the bilingual (한/영) node search index from a render `TreeGraph` (DESIGN
+ * §10.6 한/영 node 검색, §11.2). Each node's display label is the searchable title;
+ * a dedicated ko/en split + synonym aliases arrive with the i18n data layer, so the
+ * label seeds both title fields for now (NO-FALLBACK — no invented synonyms).
+ */
+function treeSearchIndex(graph: TreeGraph): NodeSearchIndex {
+  const docs: NodeSearchDoc[] = graph.nodes.map((node) => ({
+    nodeId: node.nodeId,
+    titleKo: node.label,
+    titleEn: node.label,
+    aliasesKo: [],
+    aliasesEn: [],
+  }));
+  return buildNodeSearchIndex(docs);
+}
 
 /**
  * URL path ↔ nav tab map (DESIGN §10.2 routes; gates.mjs VISUAL routes
@@ -146,6 +187,24 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
   // The calc.run from BEFORE the last build mutation, for the §10.7 before/after
   // delta; undefined until a mutation re-runs calc (never a fabricated baseline).
   const [prevStats, setPrevStats] = useState<CalcRunResponse | undefined>(undefined);
+  // The §10.6 Passive Tree render graph + the currently-allocated node set,
+  // refreshed on each open() and after each allocation; empty until a build is
+  // opened — never a fabricated tree (NO-FALLBACK §6.4).
+  const [treeGraph, setTreeGraph] = useState<TreeGraph>(EMPTY_TREE_GRAPH);
+  const [treeAllocated, setTreeAllocated] = useState<Set<number>>(() => new Set());
+  // The node currently hovered on the canvas, and the host-fetched §10.6 allocation
+  // delta chips for it; both reset when the cursor leaves a node (NO-FALLBACK).
+  const [treeHoverNodeId, setTreeHoverNodeId] = useState<number | undefined>(undefined);
+  const [treeHoverDeltas, setTreeHoverDeltas] = useState<TreeStatDelta[] | undefined>(undefined);
+  // The pending hover→previewAllocate debounce timer (DESIGN §10.6); cleared on each
+  // new hover so only the last hover within the window fetches.
+  const treeHoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // The §10.6 bilingual node search index, derived from the live tree graph.
+  const treeIndex = useMemo(
+    () => (treeGraph.nodes.length === 0 ? EMPTY_TREE_INDEX : treeSearchIndex(treeGraph)),
+    [treeGraph],
+  );
 
   const calc = build?.stats ?? EMPTY_CALC;
   const overview = buildOverviewModel(calc, build?.summary ?? {});
@@ -213,6 +272,59 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
     [session],
   );
 
+  // §10.6 hover → debounced tree.previewAllocate: a node hover stages its id and
+  // schedules a previewAllocate fetch; the timer is reset on every new hover so only
+  // the LAST hovered node within the window is fetched (DESIGN §10.6 "노드 hover 시
+  // … debounce"). Leaving every node (id null) cancels the pending fetch and clears
+  // the staged hover + its delta chips (NO-FALLBACK — no stale tooltip).
+  const previewTreeNode = useCallback(
+    (nodeId: number | null) => {
+      if (treeHoverTimer.current !== undefined) clearTimeout(treeHoverTimer.current);
+      if (nodeId === null) {
+        treeHoverTimer.current = undefined;
+        setTreeHoverNodeId(undefined);
+        setTreeHoverDeltas(undefined);
+        return;
+      }
+      setTreeHoverNodeId(nodeId);
+      // A new hover invalidates the previous node's chips until the fetch resolves.
+      setTreeHoverDeltas(undefined);
+      if (!session) return;
+      treeHoverTimer.current = setTimeout(() => {
+        void (async () => {
+          const deltas = await session.previewAllocate([nodeId]);
+          setTreeHoverDeltas(deltas);
+        })();
+      }, TREE_HOVER_DEBOUNCE_MS);
+    },
+    [session],
+  );
+
+  // Clear the pending hover-preview timer on unmount.
+  useEffect(
+    () => () => {
+      if (treeHoverTimer.current !== undefined) clearTimeout(treeHoverTimer.current);
+    },
+    [],
+  );
+
+  // §10.6 click → tree.applyAllocate: committing a node mutates the live build,
+  // re-runs calc.run (DESIGN §6.3 빌드 수정 → 즉시 재계산), and BOTH the tree's
+  // allocated set AND the Overview/Calcs re-render from the fresh stats. The
+  // pre-mutation stats become the §10.7 before/after baseline; the now-stale
+  // calc.explain traces are cleared so they re-fetch lazily.
+  const allocateTreeNode = useCallback(
+    async (nodeId: number) => {
+      if (!session) return;
+      setPrevStats(build?.stats ?? EMPTY_CALC);
+      const { allocated, stats } = await session.applyAllocate([nodeId]);
+      setTreeAllocated(allocated);
+      setBuild((current) => (current ? { ...current, stats } : current));
+      setCalcExplains(new Map());
+    },
+    [session, build],
+  );
+
   // §11.1 build commands: one "go to tab" command per nav entry. titleKo/titleEn
   // are sourced from both locale dictionaries so the §11.2 bilingual search index
   // resolves either language regardless of the active UI locale (§8.1 alias never
@@ -243,6 +355,14 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
       // traces and no before/after baseline — both reset (NO-FALLBACK §6.4).
       setSkillGroups(await session.getSkillGroups());
       setConfigOptions(await session.getConfigOptions());
+      // Populate the §10.6 Passive Tree tab from the build's real tree.getData
+      // (render graph + allocated node set). A fresh hover has no staged node or
+      // delta chips yet — both reset (NO-FALLBACK §6.4).
+      const tree = await session.getTreeData();
+      setTreeGraph(tree.graph);
+      setTreeAllocated(tree.allocated);
+      setTreeHoverNodeId(undefined);
+      setTreeHoverDeltas(undefined);
       setCalcExplains(new Map());
       setPrevStats(undefined);
     };
@@ -316,9 +436,10 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
 
   // The workspace pane is routed by the active tab (DESIGN §10.2): Items renders
   // the §10.4 ItemsPanel, Skills the §10.5 SkillsPanel, Config the §10.8
-  // ConfigPanel, Calcs the §10.7 CalcsPanel; every other tab keeps the Overview.
-  // The Config/Calcs panels drive the §13.4 build-mutation flow (apply preset →
-  // recompute → Overview/Calcs refresh) via the shared handlers above.
+  // ConfigPanel, Calcs the §10.7 CalcsPanel, Passive Tree the §10.6 TreePanel;
+  // every other tab keeps the Overview. The Config/Calcs/Tree panels drive the
+  // §13.4 build-mutation flow (mutate → recompute → Overview/Calcs refresh) via the
+  // shared handlers above — the tree's hover preview is debounced (§10.6).
   const workspace =
     activeTab === 'items' ? (
       <ItemsPanel
@@ -335,6 +456,17 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
       <ConfigPanel locale={locale} model={config} onApplyPreset={applyConfigPreset} />
     ) : activeTab === 'calcs' ? (
       <CalcsPanel locale={locale} model={calcs} onExplain={explainStat} />
+    ) : activeTab === 'passiveTree' ? (
+      <TreePanel
+        locale={locale}
+        graph={treeGraph}
+        allocated={treeAllocated}
+        index={treeIndex}
+        hoveredNodeId={treeHoverNodeId}
+        hoverDeltas={treeHoverDeltas}
+        onHoverNode={previewTreeNode}
+        onAllocate={(nodeId) => void allocateTreeNode(nodeId)}
+      />
     ) : (
       <OverviewPanel locale={locale} model={overview} />
     );

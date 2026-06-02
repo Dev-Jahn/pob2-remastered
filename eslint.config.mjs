@@ -24,6 +24,15 @@ export default tseslint.config(
     },
   },
   {
+    // visual-verify.mjs is Node-side, but its Playwright `page.evaluate` callbacks
+    // are serialized and run in the chromium page, where the browser DOM globals
+    // (document, HTMLCanvasElement) are legitimately defined.
+    files: ['tools/dev-workflow/visual-verify.mjs'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
+    },
+  },
+  {
     // phase-pipeline.mjs is a Claude Code Workflow script: it runs in the Workflow
     // runtime, which injects these globals and wraps the body in an async fn.
     files: ['tools/dev-workflow/phase-pipeline.mjs'],

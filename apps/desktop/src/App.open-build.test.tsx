@@ -77,6 +77,26 @@ function fakeSession(): BuildSession & { opened: OpenSource[]; saved: SaveFormat
     async explainStat() {
       throw new Error('explainStat not used in the open-build suite');
     },
+    // The §10.6 Passive Tree session surface (DESIGN §6.3): open() now populates the
+    // tree tab too, so getTreeData yields an empty tree here (no nodes/allocation —
+    // NO-FALLBACK §6.4); the hover-preview / commit methods stay unexercised.
+    async getTreeData() {
+      return {
+        graph: {
+          nodes: [],
+          edges: [],
+          bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+          nodeIndex: {},
+        },
+        allocated: new Set<number>(),
+      };
+    },
+    async previewAllocate() {
+      throw new Error('previewAllocate not used in the open-build suite');
+    },
+    async applyAllocate() {
+      throw new Error('applyAllocate not used in the open-build suite');
+    },
   };
 }
 

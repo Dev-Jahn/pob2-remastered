@@ -235,13 +235,124 @@ function Harness() {
 createRoot(document.getElementById('root')!).render(<Harness />);
 `;
 
+// §10.6 representative Passive Tree data (gates.mjs VISUAL[5].assert): an abridged
+// raw tree graph (a few groups of orbit-placed nodes, a notable + a keystone, real
+// connections) run through the SHIPPED buildTreeGraph so the canvas paints real
+// nodes + edges; an allocated set so allocated/unallocated discs differ; a bilingual
+// node search index from buildNodeSearchIndex; and a CONTROLLED hovered node id +
+// tree.previewAllocate deltas so the hover tooltip + the allocation-delta chips
+// paint without any pointer interaction. Embedded as a source string so
+// `harnessFiles('/tree').entry` is the buildable .tsx and the representative data
+// round-trips through the SHIPPED transforms (spec §2: reuse, don't fabricate).
+const TREE_HARNESS_ENTRY = `import { createRoot } from 'react-dom/client';
+import { AppShell, TreePanel, buildTreeGraph, buildNodeSearchIndex } from '@pob2/ui';
+import type { RawTreeData, NodeSearchDoc } from '@pob2/ui';
+import type { TreeStatDelta } from '@pob2/schema';
+import '@pob2/ui/styles.css';
+
+// An abridged raw tree (the upstream tree.json shape buildTreeGraph consumes): two
+// groups, several orbit-placed nodes incl. a notable + a keystone, real undirected
+// connections. Orbit 0 = the group centre; orbit 1 = a ring of placed nodes. The
+// constants give orbit 1 a non-zero radius + per-slot angles so the nodes spread.
+const TAU = Math.PI * 2;
+const orbit1Angles = Array.from({ length: 6 }, (_, i) => (i / 6) * TAU);
+const raw: RawTreeData = {
+  nodes: {
+    '1': { skill: 1, name: '시작 (Start)', group: 1, orbit: 0, orbitIndex: 0, stats: [], connections: [{ id: 2, orbit: 1 }, { id: 3, orbit: 1 }] },
+    '2': { skill: 2, name: '근력 (Strength)', group: 1, orbit: 1, orbitIndex: 0, stats: ['+10 to Strength'], connections: [{ id: 1, orbit: 0 }, { id: 4, orbit: 1 }] },
+    '3': { skill: 3, name: '민첩 (Dexterity)', group: 1, orbit: 1, orbitIndex: 2, stats: ['+10 to Dexterity'], connections: [{ id: 1, orbit: 0 }, { id: 5, orbit: 1 }] },
+    '4': { skill: 4, name: '불굴 (Resolute Technique)', group: 2, orbit: 1, orbitIndex: 1, stats: ['Your hits cannot be evaded'], isKeystone: true, connections: [{ id: 2, orbit: 1 }, { id: 6, orbit: 1 }] },
+    '5': { skill: 5, name: '정밀 (Precision)', group: 2, orbit: 1, orbitIndex: 3, stats: ['+40% increased critical strike chance'], isNotable: true, connections: [{ id: 3, orbit: 1 }, { id: 6, orbit: 1 }] },
+    '6': { skill: 6, name: '체력 (Vitality)', group: 2, orbit: 1, orbitIndex: 5, stats: ['+8% increased maximum Life'], isNotable: true, connections: [{ id: 4, orbit: 1 }, { id: 5, orbit: 1 }] },
+  },
+  groups: [
+    { x: 0, y: 0, nodes: [1, 2, 3], orbits: [0, 1] },
+    { x: 600, y: 200, nodes: [4, 5, 6], orbits: [1] },
+  ],
+  constants: { orbitRadii: [0, 250], skillsPerOrbit: [1, 6], orbitAnglesByOrbit: [[0], orbit1Angles] },
+  min_x: -300,
+  min_y: -300,
+  max_x: 900,
+  max_y: 500,
+};
+
+const graph = buildTreeGraph(raw);
+
+// The allocated set (gold discs + a gold path edge between allocated nodes).
+const allocated = new Set<number>([1, 2, 4]);
+
+// The bilingual (한/영) node search index over the graph (NodeSearchDoc per node).
+const docs: NodeSearchDoc[] = graph.nodes.map((node) => ({
+  nodeId: node.nodeId,
+  titleKo: node.label,
+  titleEn: node.label,
+  aliasesKo: [],
+  aliasesEn: [],
+}));
+const index = buildNodeSearchIndex(docs);
+
+// A CONTROLLED hovered node (the unallocated notable 5) + its tree.previewAllocate
+// deltas, so the hover tooltip + the §10.6 allocation-delta chips paint statically.
+const hoveredNodeId = 5;
+const hoverDeltas: TreeStatDelta[] = [
+  { statId: 'CritChance', before: 45, after: 63, delta: 18 },
+  { statId: 'TotalDPS', before: 120000, after: 138000, delta: 18000 },
+  { statId: 'Life', before: 4500, after: 4500, delta: 0 },
+];
+
+createRoot(document.getElementById('root')!).render(
+  <AppShell
+    locale="ko-KR"
+    onLocaleChange={() => {}}
+    buildName="Deadeye / Lightning Arrow"
+    activeSkill="Lightning Arrow"
+    activeTab="passiveTree"
+    workspace={
+      <TreePanel
+        locale="ko-KR"
+        graph={graph}
+        allocated={allocated}
+        index={index}
+        hoveredNodeId={hoveredNodeId}
+        hoverDeltas={hoverDeltas}
+      />
+    }
+    inspector={null}
+  />,
+);
+`;
+
 /** Map a VISUAL route to its harness entry source + index.html. */
-const HARNESS_ENTRIES = { '/calcs': CALCS_HARNESS_ENTRY };
+const HARNESS_ENTRIES = { '/calcs': CALCS_HARNESS_ENTRY, '/tree': TREE_HARNESS_ENTRY };
 
 // Per-route stat rows to pre-expand before screenshotting, so the §10.7 source
 // list + formula trace (collapsed by default) are VISIBLE in the capture. These
 // stat ids carry a real calc.explain trace in the route's harness fixture data.
 const HARNESS_EXPAND = { '/calcs': ['TotalDPS', 'TotalEHP'] };
+
+/**
+ * Count the non-transparent pixels actually PAINTED on a route's canvas, read back
+ * from the live 2D context in the page. The canvas bitmap is not in the DOM, so a
+ * blank `<canvas>` would otherwise pass every served-DOM assertion; this readback is
+ * the deterministic fact that proves the §10.6 nodes + edges drew (a blank canvas
+ * reads 0). `null` for routes with no canvas to assert (e.g. /calcs).
+ */
+const ROUTE_CANVAS_SELECTOR = { '/tree': 'canvas.pob-tree-canvas' };
+
+async function countCanvasPixels(page, selector) {
+  return page
+    .evaluate((sel) => {
+      const canvas = document.querySelector(sel);
+      if (!(canvas instanceof HTMLCanvasElement)) return 0;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return 0;
+      const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let painted = 0;
+      for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) painted += 1;
+      return painted;
+    }, selector)
+    .catch(() => 0);
+}
 
 /**
  * The fixture-harness files for a VISUAL `route`: the buildable entry `.tsx`
@@ -350,38 +461,58 @@ export function serveDir(dir) {
  * The full spec §6 visual-check path for a VISUAL `route`: build the fixture
  * harness → serve it → Playwright-screenshot it at every `dims` (default
  * 1366×768 + 1366×1100) → capture the painted DOM for assertion. Returns
- * { screen, shots, servedHtml, workdir, cleanup }. The caller runs the vision
- * assertion (gemini-vision or direct vision) over `shots`; `servedHtml` lets a
- * deterministic check confirm the VISUAL[route].assert facts actually painted.
- * `cleanup()` removes the harness workdir + screenshots (working tree clean).
+ * { screen, shots, servedHtml, canvasPaintedPixels, workdir, cleanup }. The caller
+ * runs the vision assertion (gemini-vision or direct vision) over `shots`;
+ * `servedHtml` lets a deterministic check confirm the VISUAL[route].assert facts
+ * actually painted, and `canvasPaintedPixels` (for a canvas route like /tree) is the
+ * non-transparent pixel count read back from the live 2D context — the fact that a
+ * blank canvas (0 pixels) cannot fake. `cleanup()` removes the harness workdir +
+ * screenshots (working tree clean).
  */
 export async function runVisualCheck(route, { dims = ['1366x768', '1366x1100'], outDir } = {}) {
   const screen = visualScreenFor(route);
   if (!screen) throw new Error(`no VISUAL screen registered for route ${route}`);
-  const out = outDir || join(REPO_ROOT, 'tmp-visual');
+  // A UNIQUE per-run subdir under tmp-visual (gitignored), so two concurrent checks
+  // (e.g. /calcs + /tree under one `vitest run`) never share an output dir — one's
+  // cleanup must not wipe the other's screenshots. `cleanup()` removes only THIS
+  // subdir, never the shared parent (which stays empty + gitignored = tree clean).
+  const out =
+    outDir || join(REPO_ROOT, 'tmp-visual', `${screen.name}-${process.pid}-${Date.now()}`);
   await mkdir(out, { recursive: true });
 
+  const canvasSelector = ROUTE_CANVAS_SELECTOR[route];
   const { workdir, dist } = await buildHarness(route);
   const served = await serveDir(dist);
   const shots = [];
   let servedHtml = '';
+  let canvasPaintedPixels = canvasSelector ? 0 : undefined;
   const browser = await chromium.launch();
   try {
     for (const dim of dims) {
       const [width, height] = dim.split('x').map(Number);
       const page = await browser.newPage({ viewport: { width, height } });
       await page.goto(served.url, { waitUntil: 'networkidle', timeout: 30000 });
-      // Let React paint the SPA before capturing.
-      await page.waitForSelector('.pob-calcs', { timeout: 15000 }).catch(() => {});
+      // Let React paint the SPA before capturing (the screen's root container).
+      await page.waitForSelector('.pob-calcs, .pob-tree', { timeout: 15000 }).catch(() => {});
       // Expand the representative trace rows so the §10.7 source list + formula
       // trace are VISIBLE in the screenshot (collapsed rows hide them). These rows
-      // carry a real calc.explain trace in the fixture data.
+      // carry a real calc.explain trace in the fixture data. (calcs only.)
       for (const statId of HARNESS_EXPAND[route] || []) {
         await page
           .click(`li[data-stat-row="${statId}"] [data-stat-toggle]`, { timeout: 5000 })
           .catch(() => {});
+        await page.waitForSelector('[data-source-kind]', { timeout: 5000 }).catch(() => {});
       }
-      await page.waitForSelector('[data-source-kind]', { timeout: 5000 }).catch(() => {});
+      // Canvas routes (the §10.6 tree): read back the painted-pixel count once a
+      // canvas is on screen (a blank canvas reads 0, so this is the no-false-pass
+      // fact). Keep the max across dims — at least one capture must have painted.
+      if (canvasSelector) {
+        await page.waitForSelector(canvasSelector, { timeout: 5000 }).catch(() => {});
+        canvasPaintedPixels = Math.max(
+          canvasPaintedPixels,
+          await countCanvasPixels(page, canvasSelector),
+        );
+      }
       const path = join(out, `pob-${screen.name}-${dim}.png`);
       await page.screenshot({ path, fullPage: false });
       shots.push({ path, dim });
@@ -395,11 +526,50 @@ export async function runVisualCheck(route, { dims = ['1366x768', '1366x1100'], 
 
   const cleanup = async () => {
     await rm(workdir, { recursive: true, force: true });
-    for (const s of shots) await rm(s.path, { force: true });
+    // Remove only THIS run's output subdir (its screenshots), never the shared
+    // tmp-visual parent — a concurrent run may still be using a sibling subdir.
     if (existsSync(out)) await rm(out, { recursive: true, force: true });
   };
-  return { screen, shots, servedHtml, workdir, dist, cleanup };
+  return { screen, shots, servedHtml, canvasPaintedPixels, workdir, dist, cleanup };
 }
+
+/**
+ * Per-route deterministic DOM/canvas assertions: each returns the failures that
+ * prove the route's VISUAL assert facts did NOT paint (empty ⇒ all facts present).
+ * A blank/stub harness that dropped a §10 element trips a failure here, so it can
+ * never false-pass the visual gate.
+ */
+const ROUTE_ASSERTS = {
+  '/calcs'(res) {
+    const html = res.servedHtml;
+    const lower = html.toLowerCase();
+    const failures = [];
+    // The §10.7 breakdown sections must all be present in the painted tree.
+    for (const section of ['summary', 'offence', 'defence', 'resource']) {
+      if (!lower.includes(section)) failures.push(`missing ${section} section`);
+    }
+    // A classified contribution source list (gates.mjs VISUAL[4] "source list").
+    if (!/data-source-kind=/.test(html)) failures.push('no contribution source list painted');
+    // A formula trace (gates.mjs VISUAL[4] "formula trace").
+    if (!/data-formula/.test(html)) failures.push('no formula trace painted');
+    return failures;
+  },
+  '/tree'(res) {
+    const html = res.servedHtml;
+    const failures = [];
+    // The §10.6 canvas (gates.mjs VISUAL[5] "canvas renders nodes + edges"): the
+    // element must be present AND have actually painted (the live-context pixel
+    // readback) — a blank canvas reads 0 pixels and cannot fake nodes + edges.
+    if (!/class="[^"]*pob-tree-canvas/.test(html)) failures.push('no tree canvas painted');
+    if (!(res.canvasPaintedPixels > 0))
+      failures.push(`tree canvas blank (painted pixels: ${res.canvasPaintedPixels})`);
+    // The minimap (gates.mjs VISUAL[5] "minimap present").
+    if (!/data-minimap-viewport/.test(html)) failures.push('no minimap painted');
+    // The node search box (gates.mjs VISUAL[5] "node search box").
+    if (!/data-testid="tree-search"/.test(html)) failures.push('no node search box painted');
+    return failures;
+  },
+};
 
 /**
  * `--route <route> --check`: run the spec §6 path and assert the painted screen
@@ -409,19 +579,14 @@ export async function runVisualCheck(route, { dims = ['1366x768', '1366x1100'], 
  * (gemini-vision preferred, direct-vision FLAG if OAuth is unset — spec §6.1).
  */
 async function checkRoute(route) {
-  const res = await runVisualCheck(route);
-  const html = res.servedHtml;
-  const lower = html.toLowerCase();
-  const failures = [];
-  // The §10.7 breakdown sections must all be present in the painted tree.
-  for (const section of ['summary', 'offence', 'defence', 'resource']) {
-    if (!lower.includes(section)) failures.push(`missing ${section} section`);
+  const asserts = ROUTE_ASSERTS[route];
+  if (!asserts) {
+    console.error(`VISUAL_CHECK_FAIL ${route}:\n  no deterministic asserts registered for route`);
+    return 1;
   }
-  // A classified contribution source list (gates.mjs VISUAL[4] "source list").
-  if (!/data-source-kind=/.test(html)) failures.push('no contribution source list painted');
-  // A formula trace (gates.mjs VISUAL[4] "formula trace").
-  if (!/data-formula/.test(html)) failures.push('no formula trace painted');
-  // Non-blank screenshots.
+  const res = await runVisualCheck(route);
+  const failures = asserts(res);
+  // Non-blank screenshots (shared across routes).
   for (const s of res.shots) {
     if (!existsSync(s.path) || statSync(s.path).size < 3000)
       failures.push(`blank/missing screenshot ${s.path}`);

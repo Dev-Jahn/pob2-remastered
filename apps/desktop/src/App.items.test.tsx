@@ -115,6 +115,26 @@ function fakeSession(): BuildSession & {
     async explainStat() {
       throw new Error('explainStat not used in the items suite');
     },
+    // The §10.6 Passive Tree paths: open() now populates the tree tab too, so
+    // getTreeData yields an empty tree here (no nodes/allocation — NO-FALLBACK §6.4);
+    // the hover-preview / commit methods stay unexercised in this Items suite.
+    async getTreeData() {
+      return {
+        graph: {
+          nodes: [],
+          edges: [],
+          bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+          nodeIndex: {},
+        },
+        allocated: new Set<number>(),
+      };
+    },
+    async previewAllocate() {
+      throw new Error('previewAllocate not used in the items suite');
+    },
+    async applyAllocate() {
+      throw new Error('applyAllocate not used in the items suite');
+    },
   };
 }
 

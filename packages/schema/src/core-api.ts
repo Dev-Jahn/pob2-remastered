@@ -4,12 +4,14 @@
  *
  * Scope: the MVP methods named in `tools/dev-workflow/phases.mjs` — `build.load`,
  * `build.save`, `calc.run`, `items.parseClipboard` (+ the items.* expansion) —
- * plus the Phase 4 read methods `skills.getGroups`, `config.getOptions`, and
- * `calc.explain` are fully typed (request + response) and backed by a JSON Schema
- * in `./schemas`. The remaining §6.3 methods (incl. the `skills.setGemGroup` /
- * `config.setOption` write companions) are present as request-only TYPE STUBS so
- * the surface is documented and `CoreRequestMap` is complete; their responses and
- * schemas are deferred to later phases.
+ * plus the Phase 4 read methods `skills.getGroups`, `config.getOptions`,
+ * `calc.explain`, and the Phase 5 tree methods `tree.getData`,
+ * `tree.previewAllocate`, `tree.applyAllocate` are fully typed (request +
+ * response) and backed by a JSON Schema in `./schemas`. The remaining §6.3
+ * methods (incl. the `skills.setGemGroup` / `config.setOption` write companions)
+ * are present as request-only TYPE STUBS so the surface is documented and
+ * `CoreRequestMap` is complete; their responses and schemas are deferred to later
+ * phases.
  */
 import type { BuildId, BuildState, GemInput, Locale } from './build-state.js';
 
@@ -151,6 +153,76 @@ export interface ConfigOptionCard {
   dependentModifiers: string[];
 }
 
+/**
+ * One serialized passive-tree node (DESIGN §6.3 tree.getData, §10.6 Passive Tree
+ * tab). Mirrors the runner's `serializeNode` (overlays/lua/modern_api.lua, task
+ * p5-tree-runner-api): the stable scalar identity + orbit-derived coordinate
+ * fields the UI renderer needs — the live core node (which carries the tree-node
+ * metatable + linked/path references) never leaves the runner (DESIGN §6.4).
+ * `nodeId` and `group` are numeric (core `node.id` / `node.g`); `name` is the
+ * display name (`node.dn`/`node.name`); `type` is the node kind (e.g.
+ * "ClassStart", "Notable"); `isAscendancy` is true for ascendancy-tree nodes;
+ * `connections` is the node's edge graph (the ids of every node it links to —
+ * core `node.linkedId`), from which the §10.6 renderer derives the connecting
+ * edges and the path-preview walks the graph.
+ */
+export interface TreeNode {
+  nodeId: number;
+  name: string;
+  type: string;
+  x: number;
+  y: number;
+  orbit: number;
+  orbitIndex: number;
+  group: number;
+  isAscendancy: boolean;
+  /** Ids of the nodes this node connects to (core `node.linkedId`). */
+  connections: number[];
+}
+
+/**
+ * One serialized passive-tree group (DESIGN §6.3 tree.getData). Mirrors the
+ * runner's `serializeTreeGroup`: the group id (key in `spec.tree.groups`) plus
+ * its layout coordinates.
+ */
+export interface TreeGroup {
+  groupId: number;
+  x: number;
+  y: number;
+}
+
+/**
+ * The passive-tree layout constants (DESIGN §6.3 tree.getData, §6.4
+ * "constants(orbitAnglesByOrbit, classes 등)"). Mirrors the runner's
+ * `serializeConstants` deep copy: `classes` maps class name → numeric class id;
+ * the orbit tables drive the renderer's node-position math. Kept loose (the
+ * nested orbit tables are pure layout data) — every value is a plain
+ * metatable-free copy of the tree-data constants (DESIGN §6.4 no core leak).
+ */
+export interface TreeConstants {
+  /** Map of class name → numeric class id (core `constants.classes`). */
+  classes: Record<string, number>;
+  /** Per-orbit angle lists (core `constants.orbitAnglesByOrbit`). */
+  orbitAnglesByOrbit: unknown;
+  /** Per-orbit radius list (core `constants.orbitRadii`). */
+  orbitRadii: unknown;
+  /** Per-orbit node-count list (core `constants.skillsPerOrbit`). */
+  skillsPerOrbit: unknown;
+}
+
+/**
+ * One stat's before/after change from a tree allocation preview (DESIGN §6.3
+ * tree.previewAllocate, §7.4 "passive allocation delta"). Same flat shape as
+ * `EquipDelta`: `delta === after - before`.
+ */
+export interface TreeStatDelta {
+  /** Machine-readable upstream stat id (DESIGN §6.4). */
+  statId: string;
+  before: number;
+  after: number;
+  delta: number;
+}
+
 /** Origin of one contribution in a calc.explain trace (DESIGN §10.7 source list). */
 export type ExplainSourceKind = 'item' | 'passive' | 'skillGem' | 'supportGem' | 'config' | 'buff';
 
@@ -235,6 +307,28 @@ export interface ConfigSetOptionRequest {
   value: unknown;
 }
 
+/** Fetch the serialized passive TreeGraph (DESIGN §6.3 tree.getData, §10.6). */
+export interface TreeGetDataRequest {
+  buildId: BuildId;
+}
+
+/**
+ * Preview the calc delta of allocating a node set (DESIGN §6.3
+ * tree.previewAllocate, §10.6 "allocation delta preview"). `nodeIds` are numeric
+ * tree-node ids (matching `TreeNode.nodeId`); the runner resolves each against
+ * the active spec and rejects an unknown id (NO silent skip).
+ */
+export interface TreePreviewAllocateRequest {
+  buildId: BuildId;
+  nodeIds: number[];
+}
+
+/** Commit a node-set allocation (DESIGN §6.3 tree.applyAllocate). */
+export interface TreeApplyAllocateRequest {
+  buildId: BuildId;
+  nodeIds: number[];
+}
+
 // ----------------------------------------------------------------------------
 // MVP response payloads
 // ----------------------------------------------------------------------------
@@ -314,6 +408,34 @@ export interface CalcExplainResponse {
   upstreamStatId: string;
 }
 
+/**
+ * The serialized passive TreeGraph (DESIGN §6.3 tree.getData, §10.6). Mirrors the
+ * runner's `tree.getData` envelope (minus the `ok` flag the transport strips):
+ * `treeVersion` is the active spec's tree-data version; `nodes`/`groups` are the
+ * plain serialized lists; `constants` is the layout constant block;
+ * `allocatedNodeIds` is the currently-allocated node id list (numeric).
+ */
+export interface TreeGetDataResponse {
+  /** Active tree-data version string, e.g. "0_5". */
+  treeVersion: string;
+  nodes: TreeNode[];
+  groups: TreeGroup[];
+  constants: TreeConstants;
+  /** Ids of the currently-allocated nodes (core `spec.allocNodes` keys). */
+  allocatedNodeIds: number[];
+}
+
+/** Per-stat allocation deltas for the previewed node set (DESIGN §6.3, §7.4). */
+export interface TreePreviewAllocateResponse {
+  deltas: TreeStatDelta[];
+}
+
+/** The new allocated node set after the commit (DESIGN §6.3 tree.applyAllocate). */
+export interface TreeApplyAllocateResponse {
+  /** Ids of all allocated nodes after the apply (core `spec.allocNodes` keys). */
+  allocatedNodeIds: number[];
+}
+
 // ----------------------------------------------------------------------------
 // Full §6.3 request map (MVP methods typed; rest are type-only stubs)
 // ----------------------------------------------------------------------------
@@ -350,9 +472,10 @@ export interface CoreRequestMap {
   'items.createCustom': ItemsCreateCustomRequest;
   'items.compare': ItemsCompareRequest;
 
-  // --- tree (deferred) ---
-  'tree.previewAllocate': { buildId: BuildId; nodeIds: string[] };
-  'tree.applyAllocate': { buildId: BuildId; nodeIds: string[] };
+  // --- tree (MVP: getData/previewAllocate/applyAllocate) ---
+  'tree.getData': TreeGetDataRequest;
+  'tree.previewAllocate': TreePreviewAllocateRequest;
+  'tree.applyAllocate': TreeApplyAllocateRequest;
 
   // --- skills (MVP read: getGroups; setGemGroup is the write companion) ---
   'skills.getGroups': SkillsGetGroupsRequest;
@@ -379,6 +502,9 @@ export interface CoreResponseMap {
   'items.compare': ItemsCompareResponse;
   'skills.getGroups': SkillsGetGroupsResponse;
   'config.getOptions': ConfigGetOptionsResponse;
+  'tree.getData': TreeGetDataResponse;
+  'tree.previewAllocate': TreePreviewAllocateResponse;
+  'tree.applyAllocate': TreeApplyAllocateResponse;
 }
 
 /** The MVP method names, as a literal union. */

@@ -8,7 +8,8 @@
 //! (`build.load` / `build.save` / `calc.run` / `calc.explain` /
 //! `items.parseClipboard` / `items.getEquipped` / `items.compare` /
 //! `skills.getGroups` / `skills.setGemGroup` / `config.getOptions` /
-//! `config.setOption`) through it.
+//! `config.setOption` / `tree.getData` / `tree.previewAllocate` /
+//! `tree.applyAllocate`) through it.
 //!
 //! NO-FALLBACK (DESIGN §14.2): a runner crash, a malformed reply, or a
 //! non-allowlisted method is surfaced to the frontend as a normalised
@@ -39,11 +40,13 @@ pub const CORE_ERROR_CODES: [&str; 6] = [
 /// The Core API methods the IPC bridge will route (DESIGN §14.1 "허용된 command만
 /// expose"). `core.version` is the ready handshake; the rest are the MVP surface
 /// (DESIGN §6.3): build load/save, calc.run + calc.explain, the §10.4 Items-tab
-/// reads (`items.parseClipboard`, `items.getEquipped`, `items.compare`), and the
+/// reads (`items.parseClipboard`, `items.getEquipped`, `items.compare`), the
 /// Phase 4 §10.5/§10.8 Skills/Config edits (`skills.getGroups` / `skills.setGemGroup`,
-/// `config.getOptions` / `config.setOption`). A method outside this set is refused as
-/// `UPSTREAM_INCOMPATIBLE` BEFORE it can reach the runner.
-pub const ALLOWED_METHODS: [&str; 12] = [
+/// `config.getOptions` / `config.setOption`), and the Phase 5 §10.6 Passive Tree
+/// query/allocate (`tree.getData` / `tree.previewAllocate` / `tree.applyAllocate`).
+/// A method outside this set is refused as `UPSTREAM_INCOMPATIBLE` BEFORE it can
+/// reach the runner.
+pub const ALLOWED_METHODS: [&str; 15] = [
     "core.version",
     "build.load",
     "build.save",
@@ -56,6 +59,9 @@ pub const ALLOWED_METHODS: [&str; 12] = [
     "skills.setGemGroup",
     "config.getOptions",
     "config.setOption",
+    "tree.getData",
+    "tree.previewAllocate",
+    "tree.applyAllocate",
 ];
 
 /// Normalised Core API error envelope (DESIGN §6.4). Serialized as the IPC
@@ -467,6 +473,9 @@ mod tests {
             "skills.setGemGroup",
             "config.getOptions",
             "config.setOption",
+            "tree.getData",
+            "tree.previewAllocate",
+            "tree.applyAllocate",
         ] {
             assert!(ensure_allowed(method).is_ok(), "{method} should be allowed");
         }
@@ -476,12 +485,7 @@ mod tests {
     fn allowlist_refuses_a_non_allowlisted_method_as_core_error() {
         // A method NOT in the Core API allowlist must be refused before it can reach
         // the runner — never an arbitrary method, never a shell escape (DESIGN §14.1).
-        for method in [
-            "build.applyPatch",
-            "items.createCustom",
-            "tree.applyAllocate",
-            "os.execute",
-        ] {
+        for method in ["build.applyPatch", "items.createCustom", "os.execute"] {
             let err = ensure_allowed(method).expect_err("should be refused");
             assert_eq!(err.code, "UPSTREAM_INCOMPATIBLE");
         }
@@ -725,6 +729,84 @@ mod tests {
             .expect("calc.explain");
         assert_eq!(explain.get("statId").and_then(Value::as_str), Some("Life"));
         assert_eq!(explain.get("finalValue").and_then(Value::as_f64), Some(65.0));
+
+        assert!(bridge.is_running());
+    }
+
+    #[test]
+    fn phase5_tree_methods_route_through_the_bridge() {
+        // CARRYOVER of the p3-review/getequipped-allowlist regression discipline: the
+        // Phase 5 Passive Tree methods (tree.getData, tree.previewAllocate,
+        // tree.applyAllocate) must be allowlisted AND route through the REAL runner
+        // end to end — proven against the live bridge, not a mock client. If any one
+        // were missing from ALLOWED_METHODS, the shipped app's Passive Tree tab would
+        // be refused as UPSTREAM_INCOMPATIBLE at runtime, never load.
+        let bridge = CoreBridge::start(repo_runner()).expect("runner should start");
+        let xml = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../../tools/golden-tests/fixtures/sample-build.xml"),
+        )
+        .expect("read sample fixture");
+        let build_id = bridge
+            .request("build.load", json!({ "xml": xml }))
+            .expect("build.load")
+            .get("buildId")
+            .and_then(Value::as_str)
+            .expect("buildId")
+            .to_string();
+
+        // tree.getData: the active spec serializes into a node/group/constants graph
+        // plus the currently-allocated node id list. The sample build has at least
+        // its class-start node allocated, so the list is non-empty.
+        let tree = bridge
+            .request("tree.getData", json!({ "buildId": build_id }))
+            .expect("tree.getData");
+        let nodes = tree
+            .get("nodes")
+            .and_then(Value::as_array)
+            .expect("nodes array");
+        assert!(!nodes.is_empty(), "tree.getData must serialize real nodes");
+        let allocated = tree
+            .get("allocatedNodeIds")
+            .and_then(Value::as_array)
+            .expect("allocatedNodeIds array");
+        let first_allocated = allocated
+            .first()
+            .and_then(Value::as_i64)
+            .expect("at least one allocated node");
+
+        // tree.previewAllocate: previewing the already-allocated node is a real
+        // measured no-op diff (the build's live allocation is unchanged), proving the
+        // non-destructive preview path runs and serializes a {deltas} envelope.
+        let preview = bridge
+            .request(
+                "tree.previewAllocate",
+                json!({ "buildId": build_id, "nodeIds": [first_allocated] }),
+            )
+            .expect("tree.previewAllocate");
+        assert!(
+            preview.get("deltas").and_then(Value::as_array).is_some(),
+            "tree.previewAllocate must serialize a deltas array"
+        );
+
+        // tree.applyAllocate: committing the already-allocated node keeps it in the
+        // allocated set and echoes the new allocatedNodeIds back (a real mutate path).
+        let apply = bridge
+            .request(
+                "tree.applyAllocate",
+                json!({ "buildId": build_id, "nodeIds": [first_allocated] }),
+            )
+            .expect("tree.applyAllocate");
+        let after = apply
+            .get("allocatedNodeIds")
+            .and_then(Value::as_array)
+            .expect("allocatedNodeIds array");
+        assert!(
+            after
+                .iter()
+                .any(|n| n.as_i64() == Some(first_allocated)),
+            "the committed node stays allocated"
+        );
 
         assert!(bridge.is_running());
     }

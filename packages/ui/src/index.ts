@@ -210,6 +210,82 @@ export type {
   CalcsBreakdownSpec,
 } from './calcs/calcs-model.js';
 
+// TreeData transform (DESIGN §10.6 Passive Tree tab, §16.3 viewport culling,
+// §6.4 serialization). buildTreeGraph turns the upstream src/TreeData tree.json
+// core graph into the render-ready normalized JSON graph the §10.6 renderer
+// consumes: absolute node coordinates from group.x/y + orbit radius + orbit
+// angle, a deduplicated undirected edge list, per-node classification
+// (notable/keystone/mastery/small/jewel-socket), and the min/max bounds + numeric
+// nodeId → node lookup index that drive §16.3 viewport culling and §10.6 path
+// preview. §6.4 split: `label` is the localized display name, `statId` is the
+// machine-readable node id, raw `stats` lines are machine data — never merged.
+export { buildTreeGraph } from './tree/tree-transform.js';
+export type {
+  RawTreeConnection,
+  RawTreeNode,
+  RawTreeGroup,
+  RawTreeConstants,
+  RawTreeData,
+  TreeNodeKind,
+  TreeGraphNode,
+  TreeGraphEdge,
+  TreeGraphBounds,
+  TreeGraph,
+} from './tree/tree-transform.js';
+
+// Passive Tree view-models (DESIGN §10.6 Passive Tree tab, §11.2 Search index,
+// §16.3 <50ms, §7.4 passive allocation delta, §6.4 NO-FALLBACK). Pure,
+// framework-free logic the §10.6 renderer drives, unit-tested apart from it:
+// buildNodeSearchIndex (bilingual 한/영 node search — titleKo/titleEn/aliasesKo/
+// aliasesEn tokens, inverted prefix index for the <50ms budget), previewPath
+// (shortest newly-allocated node sequence to a hovered unallocated node via BFS
+// from the allocated frontier — null when nothing to preview, never a partial
+// path), and buildAllocationDeltaModel (a tree.previewAllocate TreeStatDelta[] →
+// signed {before,after,delta} chips — a loss is negative, a real 0 stays neutral,
+// a requested-but-unreturned stat is an explicit missing marker, never a fake 0).
+export { buildNodeSearchIndex, previewPath, buildAllocationDeltaModel } from './tree/tree-model.js';
+export type {
+  NodeSearchDoc,
+  NodeSearchIndex,
+  AllocationDeltaDirection,
+  AllocationDeltaChip,
+  AllocationDeltaModel,
+} from './tree/tree-model.js';
+
+// Passive Tree canvas renderer (DESIGN §10.6 "전체 화면 canvas/WebGL 렌더링", §5.1
+// "Passive tree는 Canvas/WebGL 기반 별도 renderer", §16.3 "passive tree pan/zoom
+// 60 FPS 목표"). TreeCanvas paints a buildTreeGraph graph on an HTML5 2D canvas —
+// edges first, then node discs on top (allocated/unallocated/notable given
+// distinct fill + radius), with drag-to-pan + wheel-to-zoom managing the viewport
+// transform and §16.3 viewport culling so a large redraw only paints the on-screen
+// subset. Exposes onHoverNode (the §10.6 path-preview/tooltip driver) and
+// onAllocate (a node click). The viewport-transform math (worldToScreen /
+// screenToWorld / zoomAt / panBy) and the visibleNodes culling predicate are pure,
+// exported, and unit-tested apart from the DOM. Canvas 2D over WebGL is the §10.6
+// first-pass choice (simplicity; §10.6.렌더링 allows either).
+export {
+  TreeCanvas,
+  worldToScreen,
+  screenToWorld,
+  zoomAt,
+  panBy,
+  visibleNodes,
+} from './tree/TreeCanvas.js';
+export type { TreeCanvasProps, Viewport } from './tree/TreeCanvas.js';
+
+// Passive Tree panel (DESIGN §10.6 layout). TreePanel assembles the §10.6 screen:
+// the central TreeCanvas, a minimap (a 전체 트리 축소뷰 + a rectangle marking the
+// current canvas viewport), a bilingual (한/영) node search box (a result click
+// PANS the canvas so the chosen node lands at the centre), and a hover tooltip
+// ("이 노드를 찍으면 증가하는 stat") + an allocation-delta panel showing the
+// host-supplied tree.previewAllocate delta chips for the hovered node. The panel
+// owns the viewport (shared by the search→pan + the minimap rectangle), the search
+// query, and the local hover id; the graph / allocated set / search index / hover
+// deltas are host-supplied (no app/IO coupling). Hovering fires onHoverNode so the
+// host can debounce previewAllocate (§10.6). All chrome resolves through t (§8.1).
+export { TreePanel } from './tree/TreePanel.js';
+export type { TreePanelProps } from './tree/TreePanel.js';
+
 // Calcs components: render the §10.7 breakdown view-model as the breakdown
 // explorer (gates VISUAL[4] '/calcs'). CalcsPanel (the Summary / Offence /
 // Defence / Resource + Raw-trace collapsible breakdown tree) owns the debounced

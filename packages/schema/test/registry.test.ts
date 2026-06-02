@@ -7,7 +7,7 @@ import { schemaRegistry, MVP_METHODS, CORE_ERROR_CODES, coreErrorSchema } from '
 import type { JSONSchema } from '../src/index.js';
 
 describe('schemaRegistry', () => {
-  it('covers the four phases.mjs MVP methods plus the items.* and skills/config/calc expansions', () => {
+  it('covers the four phases.mjs MVP methods plus the items.*, skills/config/calc, and tree.* expansions', () => {
     expect(Object.keys(schemaRegistry).sort()).toEqual(
       [
         'build.load',
@@ -20,6 +20,9 @@ describe('schemaRegistry', () => {
         'items.compare',
         'skills.getGroups',
         'config.getOptions',
+        'tree.getData',
+        'tree.previewAllocate',
+        'tree.applyAllocate',
       ].sort(),
     );
   });

@@ -29,6 +29,7 @@ M.calc = {}
 M.items = {}
 M.skills = {}
 M.config = {}
+M.tree = {}
 
 -- CoreError union (DESIGN.md §6.4). Kept as named constants so every error site
 -- references the same canonical code string.
@@ -37,6 +38,7 @@ local ERR = {
 	BUILD_PARSE_FAILED = "BUILD_PARSE_FAILED",
 	UNKNOWN_MOD = "UNKNOWN_MOD",
 	CALC_FAILED = "CALC_FAILED",
+	UPSTREAM_INCOMPATIBLE = "UPSTREAM_INCOMPATIBLE",
 }
 
 -- Build a {ok=false, error={code,message}} envelope (DESIGN.md §6.4).
@@ -1271,6 +1273,337 @@ function M.config.setOption(buildId, optionId, value)
 	end
 
 	return { ok = true, optionId = optionId }
+end
+
+-- ============================================================================
+-- Passive tree: query + allocation (DESIGN §6.3 tree.previewAllocate /
+-- tree.applyAllocate, §10.6 Passive Tree tab; task p5-tree-runner-api).
+--
+-- The live build's active passive tree is build.spec (= the selected PassiveSpec in
+-- build.treeTab.specList). A PassiveSpec carries:
+--   * spec.nodes      — the per-spec node table (each a setmetatable'd copy of the
+--                       tree node; .id/.dn/.name/.type/.x/.y/.o/.oidx/.g/.group/.alloc),
+--   * spec.allocNodes — the currently-allocated node id -> node map,
+--   * spec.tree       — the shared PassiveTree (groups + constants),
+--   * spec.treeVersion— the tree-data version string ("0_5").
+--
+-- tree.getData serializes that into PLAIN tables (DESIGN §6.4): no node/group/spec/
+-- constants table — all of which carry class metatables or live references — ever
+-- leaves this module.
+--
+-- tree.previewAllocate is the NON-destructive delta path the task mandates. The vendor
+-- PassiveSpec/CalcSetup already supports computing the calc "as if" extra nodes were
+-- allocated WITHOUT mutating the spec: calcs.getMiscCalculator (wrapped by
+-- build.calcsTab:GetMiscCalculator) returns (calcFunc, baseOutput) where
+-- calcFunc({ addNodes = <set keyed by node OBJECT> }) re-runs the full calc with those
+-- nodes folded into env.allocNodes (CalcSetup.lua:717-768) — env.spec.allocNodes is
+-- left untouched. This is the SAME machinery items.compare uses for repItem. We add the
+-- requested nodes plus their shortest-path nodes (node.path, the vendor's reachability
+-- path) so the previewed allocation is connected, exactly as the live AllocNode would.
+--
+-- tree.applyAllocate COMMITS the change: PassiveSpec:AllocNode mutates spec.allocNodes
+-- and re-runs BuildAllDependsAndPaths, then the wired OnFrame recomputes mainOutput.
+--
+-- NO-FALLBACK (DESIGN §6.4): if the vendored core does not expose the non-destructive
+-- override path (no GetMiscCalculator) or the live spec/tree is missing, the API
+-- surfaces a structured UPSTREAM_INCOMPATIBLE CoreError — it never fabricates a delta.
+-- ============================================================================
+
+-- Resolve the live PassiveSpec off a build, or a CoreError. spec is the ACTIVE spec
+-- (build.spec, kept in sync with treeTab.specList[activeSpec] — TreeTab:SetActiveSpec).
+local function resolveSpec(b)
+	local spec = b.spec
+	if type(spec) ~= "table" or type(spec.nodes) ~= "table" or type(spec.allocNodes) ~= "table" then
+		return nil, err(ERR.UPSTREAM_INCOMPATIBLE, "build.spec is not a usable PassiveSpec")
+	end
+	if type(spec.tree) ~= "table" then
+		return nil, err(ERR.UPSTREAM_INCOMPATIBLE, "build.spec.tree is not available")
+	end
+	return spec, nil
+end
+
+-- Copy a node's connectivity (node.linkedId — the ids of every node it connects to)
+-- into a plain numeric list (DESIGN §6.4). This is the tree's EDGE graph: the §10.6
+-- renderer derives the connecting edges, and the path-preview walks it. Each spec node
+-- inherits linkedId from its underlying tree node via the metatable __index
+-- (PassiveTree:ProcessNode populates node.linkedId; PassiveSpec setmetatable's each
+-- spec node on it). Only numeric ids leave this module — no live node reference.
+local function copyConnections(node)
+	local out = {}
+	local linkedId = node.linkedId
+	if type(linkedId) == "table" then
+		for _, id in ipairs(linkedId) do
+			local n = scalar(id)
+			if type(n) == "number" then
+				out[#out + 1] = n
+			end
+		end
+	end
+	return out
+end
+
+-- Serialize one live spec node into a plain card (DESIGN §6.4). Only the stable scalar
+-- identity + coordinate fields the UI tree renderer needs are copied; the live node
+-- (which carries the tree-node metatable + linked/path references) never leaves here.
+-- node.dn is the display name (node.name for class/ascendancy starts); node.x/y are the
+-- orbit-derived coordinates (PassiveTree:ProcessNode), node.o/oidx the orbit position,
+-- node.g the owning group id; node.connections is the plain id list of its tree edges.
+local function serializeNode(node)
+	return {
+		nodeId = scalar(node.id),
+		name = scalar(node.dn) or scalar(node.name),
+		type = scalar(node.type),
+		x = scalar(node.x),
+		y = scalar(node.y),
+		orbit = scalar(node.o),
+		orbitIndex = scalar(node.oidx),
+		group = scalar(node.g),
+		isAscendancy = node.ascendancyName ~= nil,
+		connections = copyConnections(node),
+	}
+end
+
+-- Serialize one live tree group into a plain {groupId, x, y} card (DESIGN §6.4). The
+-- group id is the key in spec.tree.groups; only its layout coordinates are copied.
+local function serializeTreeGroup(groupId, group)
+	return {
+		groupId = scalar(groupId),
+		x = scalar(group.x),
+		y = scalar(group.y),
+	}
+end
+
+-- Deep-copy a plain data table (the tree constants: classes map, orbitAnglesByOrbit,
+-- orbitRadii, skillsPerOrbit) into a fresh metatable-free table (DESIGN §6.4 — no live
+-- core table leaks). The constants are pure data (loaded from the tree-data file), but
+-- the live table is shared with the core, so a defensive deep copy is returned. Only
+-- scalar leaves are kept; any function value (none expected here) is dropped.
+local function plainCopy(value)
+	if type(value) ~= "table" then
+		return scalar(value)
+	end
+	local out = {}
+	for k, v in pairs(value) do
+		if type(k) == "string" or type(k) == "number" then
+			local cv = plainCopy(v)
+			if cv ~= nil then
+				out[k] = cv
+			end
+		end
+	end
+	return out
+end
+
+-- Build the plain constants block from the tree's constants (DESIGN §6.4 — the §6.4
+-- "constants(orbitAnglesByOrbit, classes 등)"). Each sub-table is deep-copied so no live
+-- tree table leaks.
+local function serializeConstants(constants)
+	return {
+		classes = plainCopy(constants.classes) or {},
+		orbitAnglesByOrbit = plainCopy(constants.orbitAnglesByOrbit) or {},
+		orbitRadii = plainCopy(constants.orbitRadii) or {},
+		skillsPerOrbit = plainCopy(constants.skillsPerOrbit) or {},
+	}
+end
+
+--- tree.getData(buildId) -> { ok, treeVersion, nodes, groups, constants, allocatedNodeIds }
+---     | CoreError envelope.
+--- Serializes the ACTIVE build.spec (its current tree version) into plain tables: the
+--- node list (nodeId/name/type/x/y/orbit/orbitIndex/group/isAscendancy), the group list
+--- ({groupId,x,y}), the tree constants (classes / orbitAnglesByOrbit / orbitRadii /
+--- skillsPerOrbit), and the currently-allocated node id list. No live core table leaks
+--- (DESIGN §6.4): every entry is a fresh plain table of explicitly-copied scalars.
+function M.tree.getData(buildId)
+	local b, ok = resolveBuild(buildId)
+	if not ok then
+		return b -- already a CoreError envelope
+	end
+
+	local spec, specErr = resolveSpec(b)
+	if not spec then
+		return specErr
+	end
+
+	local nodes = {}
+	for _, node in pairs(spec.nodes) do
+		if type(node) == "table" and node.id ~= nil then
+			nodes[#nodes + 1] = serializeNode(node)
+		end
+	end
+
+	local groups = {}
+	if type(spec.tree.groups) == "table" then
+		for groupId, group in pairs(spec.tree.groups) do
+			if type(group) == "table" then
+				groups[#groups + 1] = serializeTreeGroup(groupId, group)
+			end
+		end
+	end
+
+	if type(spec.tree.constants) ~= "table" then
+		return err(ERR.UPSTREAM_INCOMPATIBLE, "build.spec.tree.constants is not available")
+	end
+
+	local allocatedNodeIds = {}
+	for id in pairs(spec.allocNodes) do
+		allocatedNodeIds[#allocatedNodeIds + 1] = scalar(id)
+	end
+
+	return {
+		ok = true,
+		treeVersion = scalar(spec.treeVersion),
+		nodes = nodes,
+		groups = groups,
+		constants = serializeConstants(spec.tree.constants),
+		allocatedNodeIds = allocatedNodeIds,
+	}
+end
+
+-- Resolve a caller-supplied nodeIds list into the live spec node objects, or an error
+-- string. Each id must be a real node in spec.nodes (NO silent skip of a typo'd id —
+-- the caller must learn the set was invalid). A node already allocated is allowed (it
+-- simply contributes nothing new to the preview/apply). Returns the node-object list.
+local function resolveNodeList(spec, nodeIds)
+	if type(nodeIds) ~= "table" then
+		return nil, "nodeIds must be a list (table) of node ids"
+	end
+	local nodes = {}
+	for _, id in ipairs(nodeIds) do
+		local node = spec.nodes[id] or (type(id) == "string" and spec.nodes[tonumber(id)])
+		if type(node) ~= "table" then
+			return nil, "unknown nodeId '" .. tostring(id) .. "' (no such node in the active tree)"
+		end
+		nodes[#nodes + 1] = node
+	end
+	return nodes, nil
+end
+
+--- tree.previewAllocate(buildId, nodeIds) -> { ok, deltas } | CoreError envelope.
+--- Computes the per-stat calc delta of allocating the given node set WITHOUT mutating
+--- the build (DESIGN §6.3 tree.previewAllocate, §10.6 "allocation delta preview"). Drives
+--- the vendor non-destructive override path: build.calcsTab:GetMiscCalculator() yields
+--- (calcFunc, baseOutput) where calcFunc({ addNodes = <set keyed by node object> })
+--- re-runs the full calc with those nodes (plus their shortest-path nodes, so the
+--- allocation is connected) folded into env.allocNodes — env.spec.allocNodes is left
+--- untouched (CalcSetup.lua:717-768; the same machinery items.compare uses). The delta is
+--- the difference of the curated §7.4 stats between the with-nodes output and the
+--- baseline. A missing GetMiscCalculator surfaces UPSTREAM_INCOMPATIBLE (NO fabricated
+--- delta — DESIGN §6.4).
+function M.tree.previewAllocate(buildId, nodeIds)
+	local b, ok = resolveBuild(buildId)
+	if not ok then
+		return b -- already a CoreError envelope
+	end
+
+	local spec, specErr = resolveSpec(b)
+	if not spec then
+		return specErr
+	end
+
+	local nodes, listErr = resolveNodeList(spec, nodeIds)
+	if not nodes then
+		return err(ERR.BUILD_PARSE_FAILED, listErr)
+	end
+
+	if type(b.calcsTab) ~= "table" or type(b.calcsTab.GetMiscCalculator) ~= "function" then
+		return err(ERR.UPSTREAM_INCOMPATIBLE, "build.calcsTab has no non-destructive misc calculator")
+	end
+
+	-- (calcFunc, baseOutput): calcFunc({addNodes}) recomputes WITHOUT mutating the spec;
+	-- baseOutput is the current (no-override) output.
+	local okCalc, calcFunc, baseOutput = pcall(function()
+		return b.calcsTab:GetMiscCalculator()
+	end)
+	if not okCalc or type(calcFunc) ~= "function" or type(baseOutput) ~= "table" then
+		return err(ERR.UPSTREAM_INCOMPATIBLE, "could not obtain the non-destructive misc calculator")
+	end
+
+	-- The addNodes override is a set keyed by the node OBJECT (CalcSetup walks
+	-- `for node in pairs(override.addNodes)`). Include each requested node AND its
+	-- shortest-path nodes (node.path, the vendor's reachability path) so the previewed
+	-- allocation is connected to the tree — matching what AllocNode would commit.
+	local addNodes = {}
+	for _, node in ipairs(nodes) do
+		addNodes[node] = true
+		if type(node.path) == "table" then
+			for _, pathNode in ipairs(node.path) do
+				addNodes[pathNode] = true
+			end
+		end
+	end
+
+	local okNew, newOutput = pcall(function()
+		return calcFunc({ addNodes = addNodes })
+	end)
+	if not okNew or type(newOutput) ~= "table" then
+		return err(ERR.CALC_FAILED, "preview allocation calc pass failed")
+	end
+
+	local deltas = {}
+	for _, def in ipairs(CORE_STATS) do
+		local before = baseOutput[def.id]
+		local after = newOutput[def.id]
+		-- A stat is reported only when it is a real number in EITHER pass; a missing side
+		-- counts as 0 (the stat contributed nothing there), so a stat that only appears
+		-- after allocation still reports a genuine delta (NO fabricated null).
+		if type(before) == "number" or type(after) == "number" then
+			local b0 = type(before) == "number" and before or 0
+			local a0 = type(after) == "number" and after or 0
+			deltas[#deltas + 1] = { statId = def.id, before = b0, after = a0, delta = a0 - b0 }
+		end
+	end
+
+	return { ok = true, deltas = deltas }
+end
+
+--- tree.applyAllocate(buildId, nodeIds) -> { ok, allocatedNodeIds } | CoreError envelope.
+--- COMMITS the allocation of the given node set: drives PassiveSpec:AllocNode for each
+--- requested node (which allocates the node plus its connecting path and re-runs
+--- BuildAllDependsAndPaths), then re-drives the core calc (build.buildFlag + the wired
+--- OnFrame) so build.calcsTab.mainOutput reflects the new tree. Unlike previewAllocate
+--- (a non-mutating A-vs-B pass), this ACTUALLY mutates the live spec — so a subsequent
+--- getData reports the new node in allocatedNodeIds and calc.run observes the genuine
+--- change (NO-FALLBACK — DESIGN §6.3).
+function M.tree.applyAllocate(buildId, nodeIds)
+	local b, ok = resolveBuild(buildId)
+	if not ok then
+		return b -- already a CoreError envelope
+	end
+
+	local spec, specErr = resolveSpec(b)
+	if not spec then
+		return specErr
+	end
+
+	local nodes, listErr = resolveNodeList(spec, nodeIds)
+	if not nodes then
+		return err(ERR.BUILD_PARSE_FAILED, listErr)
+	end
+
+	if type(spec.AllocNode) ~= "function" then
+		return err(ERR.UPSTREAM_INCOMPATIBLE, "build.spec has no AllocNode method")
+	end
+
+	-- AllocNode allocates the node plus its connecting path and rebuilds depends/paths.
+	-- build.buildFlag = true marks the calc dirty; the wired OnFrame callback then runs
+	-- calcsTab:BuildOutput(), refreshing mainOutput against the new tree (Build.lua).
+	local okCalc, calcErr = pcall(function()
+		for _, node in ipairs(nodes) do
+			spec:AllocNode(node, nil)
+		end
+		b.buildFlag = true
+		runCallback("OnFrame")
+	end)
+	if not okCalc then
+		return err(ERR.CALC_FAILED, calcErr)
+	end
+
+	local allocatedNodeIds = {}
+	for id in pairs(spec.allocNodes) do
+		allocatedNodeIds[#allocatedNodeIds + 1] = scalar(id)
+	end
+
+	return { ok = true, allocatedNodeIds = allocatedNodeIds }
 end
 
 return M

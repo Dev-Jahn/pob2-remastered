@@ -37,8 +37,13 @@ import type {
   ItemsParseClipboardResponse,
   Locale,
   SkillsGetGroupsResponse,
+  TreeApplyAllocateResponse,
+  TreeGetDataResponse,
+  TreeNode,
+  TreePreviewAllocateResponse,
+  TreeStatDelta,
 } from '@pob2/schema';
-import type { BuildSummary, InspectedItem } from '@pob2/ui';
+import type { BuildSummary, InspectedItem, TreeGraph, TreeGraphNode, TreeNodeKind } from '@pob2/ui';
 
 /**
  * The slice of the @pob2/core-client `CoreClient` Core API this data layer needs,
@@ -79,6 +84,12 @@ export interface BuildClient {
     statId: string,
     activeSkillId?: string,
   ): Promise<CalcExplainResponse>;
+  /** tree.getData — the serialized passive TreeGraph of the build (DESIGN §6.3, §10.6). */
+  getTreeData(buildId: string): Promise<TreeGetDataResponse>;
+  /** tree.previewAllocate — the calc delta of allocating a node set, no mutation (§6.3, §7.4). */
+  previewAllocate(buildId: string, nodeIds: number[]): Promise<TreePreviewAllocateResponse>;
+  /** tree.applyAllocate — COMMIT a node-set allocation, returns the new allocated set (§6.3). */
+  applyAllocate(buildId: string, nodeIds: number[]): Promise<TreeApplyAllocateResponse>;
 }
 
 /** What `open()` accepts: build XML or a PoB share code (DESIGN §12.2, §10.9). */
@@ -96,6 +107,23 @@ export type SaveFormat = 'xml' | 'shareCode';
 /** The equipped-gear data the Items tab consumes: the build's `EquippedItem[]`. */
 export interface EquippedResult {
   equipped: EquippedItem[];
+}
+
+/**
+ * The Passive Tree data the §10.6 TreePanel consumes: the render-ready `TreeGraph`
+ * the canvas paints plus the numeric set of currently-allocated node ids (the
+ * canvas's allocated-visual input). The session transforms the runner's flat
+ * `TreeGetDataResponse` into this UI shape — see {@link treeResponseToGraph}.
+ */
+export interface TreeDataResult {
+  graph: TreeGraph;
+  allocated: Set<number>;
+}
+
+/** The §7.4 allocation-commit result: the new allocated set + the recomputed stats. */
+export interface AllocateResult {
+  allocated: Set<number>;
+  stats: CalcRunResponse;
 }
 
 /** What `parseClipboard()` yields: an inspector-ready item + its source locale. */
@@ -158,6 +186,116 @@ export interface BuildSession {
    * the Calcs breakdown explorer. Throws if no build has been opened (NO-FALLBACK).
    */
   explainStat(statId: string, activeSkillId?: string): Promise<CalcExplainResponse>;
+  /**
+   * The open build's Passive Tree (DESIGN §6.3 tree.getData, §10.6), transformed
+   * into the render-ready `{ graph, allocated }` the §10.6 TreePanel consumes.
+   * Throws if no build has been opened (NO-FALLBACK).
+   */
+  getTreeData(): Promise<TreeDataResult>;
+  /**
+   * The per-stat allocation deltas of allocating `nodeIds` WITHOUT mutating the
+   * build (DESIGN §6.3 tree.previewAllocate, §10.6 allocation delta preview, §7.4) —
+   * the host debounces this on node hover. Throws if no build has been opened.
+   */
+  previewAllocate(nodeIds: number[]): Promise<TreeStatDelta[]>;
+  /**
+   * COMMIT the allocation of `nodeIds` (DESIGN §6.3 tree.applyAllocate), then RE-RUN
+   * calc.run and return the new allocated set + the refreshed stats (빌드 수정 →
+   * 즉시 재계산). Throws if no build has been opened (NO-FALLBACK).
+   */
+  applyAllocate(nodeIds: number[]): Promise<AllocateResult>;
+}
+
+/**
+ * Map a runner tree-node `type` string to the renderer's `TreeNodeKind` (DESIGN
+ * §10.6). The runner serializes the upstream `node.type` (PassiveTree.lua): Socket →
+ * jewel-socket, Keystone → keystone, Notable → notable, Mastery → mastery; every
+ * other type (Normal/ClassStart/AscendClassStart/OnlyImage) is a `small` node by
+ * definition (NO-FALLBACK — never a guessed kind).
+ */
+function kindOf(type: string): TreeNodeKind {
+  switch (type) {
+    case 'Socket':
+      return 'jewel-socket';
+    case 'Keystone':
+      return 'keystone';
+    case 'Notable':
+      return 'notable';
+    case 'Mastery':
+      return 'mastery';
+    default:
+      return 'small';
+  }
+}
+
+/** Lift one runner `TreeNode` into a render `TreeGraphNode` (§6.4 label/statId split). */
+function toGraphNode(node: TreeNode): TreeGraphNode {
+  return {
+    nodeId: node.nodeId,
+    statId: String(node.nodeId),
+    label: node.name,
+    kind: kindOf(node.type),
+    x: node.x,
+    y: node.y,
+    orbit: node.orbit,
+    orbitIndex: node.orbitIndex,
+    group: node.group,
+    // The runner serializes the node's scalar identity + coordinates, not its raw
+    // stat lines, so the render node carries no stat data (DESIGN §6.4 no core leak).
+    stats: [],
+  };
+}
+
+/**
+ * Transform the runner's flat `TreeGetDataResponse` into the render-ready
+ * `{ graph, allocated }` the §10.6 TreePanel consumes (DESIGN §10.6 "UI 전용 data
+ * transform layer"). The runner already serializes ABSOLUTE node coordinates (its
+ * own orbit math), so each node is lifted field-by-field; the deduplicated
+ * undirected edge list is derived from each node's `connections` (core
+ * `node.linkedId`) so the §10.6 canvas paints the connecting edges and the
+ * path-preview can walk the graph. A connection to a node absent from the graph,
+ * or a self-edge, is DROPPED (DESIGN §6.4 NO-FALLBACK: an absent edge is never a
+ * fabricated one). `bounds`/`nodeIndex` are computed from the node coordinates for
+ * the §16.3 viewport-culling + §10.6 path-preview inputs.
+ */
+export function treeResponseToGraph(response: TreeGetDataResponse): TreeDataResult {
+  const nodes = response.nodes.map(toGraphNode);
+  const nodeIndex: Record<number, TreeGraphNode> = {};
+  for (const node of nodes) nodeIndex[node.nodeId] = node;
+
+  // Deduplicate the per-node connections into undirected edges (a < b), dropping
+  // self-edges and connections to nodes absent from the graph (same rule as
+  // buildTreeGraph — NO phantom edge, DESIGN §6.4).
+  const edges: { a: number; b: number }[] = [];
+  const seen = new Set<string>();
+  for (const node of response.nodes) {
+    for (const targetId of node.connections) {
+      if (targetId === node.nodeId) continue; // no self-edges
+      if (!nodeIndex[targetId]) continue; // dangling target → drop
+      const a = Math.min(node.nodeId, targetId);
+      const b = Math.max(node.nodeId, targetId);
+      const key = `${a}-${b}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({ a, b });
+    }
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const node of nodes) {
+    if (node.x < minX) minX = node.x;
+    if (node.x > maxX) maxX = node.x;
+    if (node.y < minY) minY = node.y;
+    if (node.y > maxY) maxY = node.y;
+  }
+
+  return {
+    graph: { nodes, edges, bounds: { minX, minY, maxX, maxY }, nodeIndex },
+    allocated: new Set(response.allocatedNodeIds),
+  };
 }
 
 /**
@@ -269,6 +407,31 @@ export function createBuildSession(client: BuildClient): BuildSession {
         throw new Error('build-session: explainStat() called before a build was opened');
       }
       return client.explainStat(buildId, statId, activeSkillId);
+    },
+
+    async getTreeData() {
+      if (buildId === null) {
+        throw new Error('build-session: getTreeData() called before a build was opened');
+      }
+      return treeResponseToGraph(await client.getTreeData(buildId));
+    },
+
+    async previewAllocate(nodeIds) {
+      if (buildId === null) {
+        throw new Error('build-session: previewAllocate() called before a build was opened');
+      }
+      const { deltas } = await client.previewAllocate(buildId, nodeIds);
+      return deltas;
+    },
+
+    async applyAllocate(nodeIds) {
+      if (buildId === null) {
+        throw new Error('build-session: applyAllocate() called before a build was opened');
+      }
+      // Commit the allocation, then re-run the calc (DESIGN §6.3 빌드 수정 → 즉시 재계산).
+      const { allocatedNodeIds } = await client.applyAllocate(buildId, nodeIds);
+      const stats = await client.calcRun(buildId);
+      return { allocated: new Set(allocatedNodeIds), stats };
     },
   };
 }

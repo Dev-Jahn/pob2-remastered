@@ -81,6 +81,9 @@ const validRequests: Record<string, unknown> = {
   'items.compare': { buildId: 'b-1', itemId: '42', slot: 'Weapon 1' },
   'skills.getGroups': { buildId: 'b-1' },
   'config.getOptions': { buildId: 'b-1' },
+  'tree.getData': { buildId: 'b-1' },
+  'tree.previewAllocate': { buildId: 'b-1', nodeIds: [13828] },
+  'tree.applyAllocate': { buildId: 'b-1', nodeIds: [13828] },
 };
 
 const validResponses: Record<string, unknown> = {
@@ -141,6 +144,35 @@ const validResponses: Record<string, unknown> = {
       },
     ],
   },
+  'tree.getData': {
+    treeVersion: '0_5',
+    nodes: [
+      {
+        nodeId: 50459,
+        name: 'RANGER',
+        type: 'ClassStart',
+        x: -10.5,
+        y: 20,
+        orbit: 0,
+        orbitIndex: 0,
+        group: 1,
+        isAscendancy: false,
+        connections: [13828],
+      },
+    ],
+    groups: [{ groupId: 1, x: -100, y: 200 }],
+    constants: {
+      classes: { DexClass: 2 },
+      orbitAnglesByOrbit: [[0]],
+      orbitRadii: [0, 82],
+      skillsPerOrbit: [1, 6],
+    },
+    allocatedNodeIds: [50459],
+  },
+  'tree.previewAllocate': {
+    deltas: [{ statId: 'Evasion', before: 7, after: 23, delta: 16 }],
+  },
+  'tree.applyAllocate': { allocatedNodeIds: [50459, 13828] },
 };
 
 // ---------------------------------------------------------------------------

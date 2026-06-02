@@ -45,6 +45,13 @@ import type {
   SkillGroupCard,
   SkillsGetGroupsResponse,
   StatResult,
+  TreeApplyAllocateResponse,
+  TreeConstants,
+  TreeGetDataResponse,
+  TreeGroup,
+  TreeNode,
+  TreePreviewAllocateResponse,
+  TreeStatDelta,
 } from '@pob2/schema';
 import {
   RunnerClient,
@@ -446,6 +453,95 @@ export class CoreClient {
       },
       (r) => assembleExplain(r, statId),
     )) as CalcExplainResponse;
+  }
+
+  /**
+   * The serialized passive TreeGraph of the loaded build (DESIGN §6.3 tree.getData,
+   * §10.6 Passive Tree tab). Validates the request against tree.getData:request,
+   * drives the runner's tree.getData (which serializes the ACTIVE spec into plain
+   * node/group/constants tables — no live core table leaks, DESIGN §6.4), and
+   * validates the assembled graph against tree.getData:response.
+   *
+   * The runner already emits the exact {treeVersion, nodes, groups, constants,
+   * allocatedNodeIds} shape (its `ok` flag is stripped by the transport), so this
+   * lifts each field explicitly into the registry TreeGetDataResponse — every
+   * field is copied, no runner sub-table is passed through opaquely — then the
+   * registry response schema validates it.
+   */
+  async getTreeData(buildId: string): Promise<TreeGetDataResponse> {
+    return (await this.runner.request(
+      'tree.getData',
+      { buildId },
+      (p) => ({ buildId: (p as { buildId: string }).buildId }),
+      (r) => {
+        const wire = (r ?? {}) as Partial<TreeGetDataResponse>;
+        return {
+          treeVersion: typeof wire.treeVersion === 'string' ? wire.treeVersion : '',
+          nodes: (wire.nodes as TreeNode[]) ?? [],
+          groups: (wire.groups as TreeGroup[]) ?? [],
+          constants: (wire.constants as TreeConstants) ?? {
+            classes: {},
+            orbitAnglesByOrbit: [],
+            orbitRadii: [],
+            skillsPerOrbit: [],
+          },
+          allocatedNodeIds: (wire.allocatedNodeIds as number[]) ?? [],
+        };
+      },
+    )) as TreeGetDataResponse;
+  }
+
+  /**
+   * Preview the per-stat calc delta of allocating a node set WITHOUT mutating the
+   * build (DESIGN §6.3 tree.previewAllocate, §10.6 "allocation delta preview", §7.4
+   * "passive allocation delta"). Validates the request against
+   * tree.previewAllocate:request, drives the runner's non-destructive override path
+   * (build.calcsTab:GetMiscCalculator addNodes — the same machinery items.compare
+   * uses), and validates the assembled {deltas} against tree.previewAllocate:response.
+   *
+   * Each delta is a flat {statId, before, after, delta} with `delta === after - before`;
+   * the runner already serializes that exact shape, so it passes through field-by-field.
+   * The build's live allocation is NOT changed — a subsequent getTreeData reports the
+   * same allocatedNodeIds (the whole point of a hover-time preview).
+   */
+  async previewAllocate(buildId: string, nodeIds: number[]): Promise<TreePreviewAllocateResponse> {
+    return (await this.runner.request(
+      'tree.previewAllocate',
+      { buildId, nodeIds },
+      (p) => ({
+        buildId: (p as { buildId: string }).buildId,
+        nodeIds: (p as { nodeIds: number[] }).nodeIds,
+      }),
+      (r) => ({ deltas: ((r as { deltas?: TreeStatDelta[] }).deltas ?? []) as TreeStatDelta[] }),
+    )) as TreePreviewAllocateResponse;
+  }
+
+  /**
+   * COMMIT the allocation of a node set, then return the new allocated node id list
+   * (DESIGN §6.3 tree.applyAllocate). This is the write companion to
+   * previewAllocate: it ACTUALLY mutates the live spec (the runner drives
+   * PassiveSpec:AllocNode and re-drives the core calc), so a subsequent getTreeData
+   * reports the new node in allocatedNodeIds and calcRun observes the genuine change
+   * (NO A-vs-A stub — DESIGN §6.3). Validates the request against
+   * tree.applyAllocate:request and the assembled {allocatedNodeIds} against
+   * tree.applyAllocate:response.
+   *
+   * An unknown build / unknown node surfaces a structured CoreClientError from the
+   * transport — never a faked success (NO-FALLBACK, DESIGN §6.4).
+   */
+  async applyAllocate(buildId: string, nodeIds: number[]): Promise<TreeApplyAllocateResponse> {
+    return (await this.runner.request(
+      'tree.applyAllocate',
+      { buildId, nodeIds },
+      (p) => ({
+        buildId: (p as { buildId: string }).buildId,
+        nodeIds: (p as { nodeIds: number[] }).nodeIds,
+      }),
+      (r) => ({
+        allocatedNodeIds: ((r as { allocatedNodeIds?: number[] }).allocatedNodeIds ??
+          []) as number[],
+      }),
+    )) as TreeApplyAllocateResponse;
   }
 
   /** Decode a PoB share code to XML and load it (DESIGN §6.3 loadShareCode). */

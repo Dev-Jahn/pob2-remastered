@@ -199,4 +199,15 @@ export const stringsEn = {
   'calcs.source.supportGem': 'Support Gem',
   'calcs.source.config': 'Config',
   'calcs.source.buff': 'Buff',
+
+  // Passive Tree tab (DESIGN §10.6). The §10.6 layout chrome: the central tree
+  // canvas, the minimap, the bilingual (한/영) node search box + its empty-results
+  // hint, the hovered-node tooltip ("이 노드를 찍으면 증가하는 stat") + the
+  // allocation-delta panel headings and the missing-stat marker (§6.4 NO-FALLBACK).
+  'tree.canvas': 'Tree',
+  'tree.minimap': 'Minimap',
+  'tree.search.placeholder': 'Search nodes',
+  'tree.tooltip.title': 'Allocating this node increases',
+  'tree.delta.title': 'Allocation Delta',
+  'tree.delta.missing': 'Not computed',
 } as const;

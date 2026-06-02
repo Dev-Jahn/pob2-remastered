@@ -157,6 +157,25 @@ function fakeSession(): BuildSession & {
       explained.push(statId);
       return DPS_EXPLAIN;
     },
+    // The §10.6 Passive Tree paths are not exercised by this suite; the App's open
+    // flow calls getTreeData, so it yields an empty tree (no nodes, no allocation).
+    async getTreeData() {
+      return {
+        graph: {
+          nodes: [],
+          edges: [],
+          bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+          nodeIndex: {},
+        },
+        allocated: new Set<number>(),
+      };
+    },
+    async previewAllocate() {
+      return [];
+    },
+    async applyAllocate() {
+      return { allocated: new Set<number>(), stats: STATS_BEFORE };
+    },
   };
 }
 

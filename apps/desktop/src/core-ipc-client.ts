@@ -47,6 +47,13 @@ import type {
   SkillGroupCard,
   SkillsGetGroupsResponse,
   StatResult,
+  TreeApplyAllocateResponse,
+  TreeConstants,
+  TreeGetDataResponse,
+  TreeGroup,
+  TreeNode,
+  TreePreviewAllocateResponse,
+  TreeStatDelta,
 } from '@pob2/schema';
 import type { BuildSummary } from '@pob2/ui';
 import type { BuildClient } from './build-session.js';
@@ -343,6 +350,49 @@ export function createIpcCoreClient(options: IpcCoreClientOptions = {}): BuildCl
       // upstreamRawStatId; assemble into the registry CalcExplainResponse — mirrors
       // @pob2/core-client assembleExplain (DESIGN §6.4, §10.7).
       return assembleExplain(result, statId);
+    },
+
+    async getTreeData(buildId: string): Promise<TreeGetDataResponse> {
+      const wire = (await request('tree.getData', { buildId })) as Partial<TreeGetDataResponse>;
+      // The runner already emits the exact {treeVersion, nodes, groups, constants,
+      // allocatedNodeIds} shape; lift each field explicitly — an absent list means an
+      // empty tree, never a fabricated node (NO-FALLBACK §6.4). Mirrors
+      // @pob2/core-client's getTreeData assembly.
+      return {
+        treeVersion: typeof wire.treeVersion === 'string' ? wire.treeVersion : '',
+        nodes: (wire.nodes as TreeNode[]) ?? [],
+        groups: (wire.groups as TreeGroup[]) ?? [],
+        constants:
+          (wire.constants as TreeConstants) ??
+          ({
+            classes: {},
+            orbitAnglesByOrbit: [],
+            orbitRadii: [],
+            skillsPerOrbit: [],
+          } as TreeConstants),
+        allocatedNodeIds: (wire.allocatedNodeIds as number[]) ?? [],
+      };
+    },
+
+    async previewAllocate(
+      buildId: string,
+      nodeIds: number[],
+    ): Promise<TreePreviewAllocateResponse> {
+      const result = (await request('tree.previewAllocate', { buildId, nodeIds })) as {
+        deltas?: TreeStatDelta[];
+      };
+      // The runner serializes the exact {statId, before, after, delta} list; absent
+      // means an empty (no-op) preview, never a fabricated delta (NO-FALLBACK).
+      return { deltas: result.deltas ?? [] };
+    },
+
+    async applyAllocate(buildId: string, nodeIds: number[]): Promise<TreeApplyAllocateResponse> {
+      const result = (await request('tree.applyAllocate', { buildId, nodeIds })) as {
+        allocatedNodeIds?: number[];
+      };
+      // The runner commits the allocation and echoes the new allocated set back;
+      // absent means no allocated nodes, never a fabricated set (NO-FALLBACK).
+      return { allocatedNodeIds: result.allocatedNodeIds ?? [] };
     },
   };
 }
