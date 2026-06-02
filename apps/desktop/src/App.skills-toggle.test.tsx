@@ -115,10 +115,12 @@ describe('App skills gem toggle (order-preserving, review P1)', () => {
     runCommand('build-open');
     await screen.findByText('65');
 
-    // Go to the Skills tab and toggle a gem (checkbox[0] is the group-enable, [1+] are gems).
+    // Go to the Skills tab and toggle a gem. The group-enable checkbox is hidden (no
+    // onToggleGroup wired), so the checkboxes are the group's gems — toggle the 2nd.
     runCommand('nav-skills');
     const checkboxes = await screen.findAllByRole('checkbox');
-    fireEvent.click(checkboxes[1]);
+    expect(checkboxes.length).toBeGreaterThan(1);
+    fireEvent.click(checkboxes[1]!);
 
     await vi.waitFor(() => expect(gemWrites).toHaveLength(1));
     const write = gemWrites[0]!;
