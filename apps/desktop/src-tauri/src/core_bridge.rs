@@ -5,8 +5,10 @@
 //! (`overlays/lua/runner.lua`): it spawns the runner under LuaJIT, speaks
 //! newline-delimited JSON-RPC 2.0 over its stdin/stdout, completes the
 //! `core.version` ready handshake, and routes the allowlisted Core API methods
-//! (`build.load` / `build.save` / `calc.run` / `items.parseClipboard` /
-//! `items.getEquipped` / `items.compare`) through it.
+//! (`build.load` / `build.save` / `calc.run` / `calc.explain` /
+//! `items.parseClipboard` / `items.getEquipped` / `items.compare` /
+//! `skills.getGroups` / `skills.setGemGroup` / `config.getOptions` /
+//! `config.setOption`) through it.
 //!
 //! NO-FALLBACK (DESIGN §14.2): a runner crash, a malformed reply, or a
 //! non-allowlisted method is surfaced to the frontend as a normalised
@@ -36,17 +38,24 @@ pub const CORE_ERROR_CODES: [&str; 6] = [
 
 /// The Core API methods the IPC bridge will route (DESIGN §14.1 "허용된 command만
 /// expose"). `core.version` is the ready handshake; the rest are the MVP surface
-/// (DESIGN §6.3): build load/save, calc.run, and the §10.4 Items-tab reads
-/// (`items.parseClipboard`, `items.getEquipped`, `items.compare`). A method outside
-/// this set is refused as `UPSTREAM_INCOMPATIBLE` BEFORE it can reach the runner.
-pub const ALLOWED_METHODS: [&str; 7] = [
+/// (DESIGN §6.3): build load/save, calc.run + calc.explain, the §10.4 Items-tab
+/// reads (`items.parseClipboard`, `items.getEquipped`, `items.compare`), and the
+/// Phase 4 §10.5/§10.8 Skills/Config edits (`skills.getGroups` / `skills.setGemGroup`,
+/// `config.getOptions` / `config.setOption`). A method outside this set is refused as
+/// `UPSTREAM_INCOMPATIBLE` BEFORE it can reach the runner.
+pub const ALLOWED_METHODS: [&str; 12] = [
     "core.version",
     "build.load",
     "build.save",
     "calc.run",
+    "calc.explain",
     "items.parseClipboard",
     "items.getEquipped",
     "items.compare",
+    "skills.getGroups",
+    "skills.setGemGroup",
+    "config.getOptions",
+    "config.setOption",
 ];
 
 /// Normalised Core API error envelope (DESIGN §6.4). Serialized as the IPC
@@ -450,9 +459,14 @@ mod tests {
             "build.load",
             "build.save",
             "calc.run",
+            "calc.explain",
             "items.parseClipboard",
             "items.getEquipped",
             "items.compare",
+            "skills.getGroups",
+            "skills.setGemGroup",
+            "config.getOptions",
+            "config.setOption",
         ] {
             assert!(ensure_allowed(method).is_ok(), "{method} should be allowed");
         }
@@ -464,7 +478,7 @@ mod tests {
         // the runner — never an arbitrary method, never a shell escape (DESIGN §14.1).
         for method in [
             "build.applyPatch",
-            "calc.explain",
+            "items.createCustom",
             "tree.applyAllocate",
             "os.execute",
         ] {
@@ -606,6 +620,113 @@ mod tests {
             .expect("Life delta");
         assert_eq!(life.get("before").and_then(Value::as_f64), Some(65.0));
         assert_eq!(life.get("delta").and_then(Value::as_f64), Some(0.0));
+    }
+
+    #[test]
+    fn phase4_skills_config_explain_route_through_the_bridge() {
+        // CARRYOVER of the p3-review/getequipped-allowlist BLOCKING regression: the
+        // Phase 4 Skills/Config/Calcs methods (skills.getGroups, skills.setGemGroup,
+        // config.getOptions, config.setOption, calc.explain) must be allowlisted AND
+        // route through the REAL runner end to end — proven against the live bridge,
+        // not a mock client (same discipline as items_getequipped above). If any one
+        // were missing from ALLOWED_METHODS, the shipped app's Skills/Config/Calcs tabs
+        // would be refused as UPSTREAM_INCOMPATIBLE at runtime, never load.
+        let bridge = CoreBridge::start(repo_runner()).expect("runner should start");
+        let xml = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../../tools/golden-tests/fixtures/sample-build.xml"),
+        )
+        .expect("read sample fixture");
+        let build_id = bridge
+            .request("build.load", json!({ "xml": xml }))
+            .expect("build.load")
+            .get("buildId")
+            .and_then(Value::as_str)
+            .expect("buildId")
+            .to_string();
+
+        // skills.getGroups: the sample build's first socket group leads with the
+        // Mace Strike active gem at level 20 (modern_api_skills_spec known-good).
+        let groups = bridge
+            .request("skills.getGroups", json!({ "buildId": build_id }))
+            .expect("skills.getGroups");
+        let group_list = groups
+            .get("groups")
+            .and_then(Value::as_array)
+            .expect("groups array");
+        let first_group = group_list.first().expect("at least one socket group");
+        let group_id = first_group
+            .get("groupId")
+            .and_then(Value::as_str)
+            .expect("groupId")
+            .to_string();
+        let first_gem = first_group
+            .get("gems")
+            .and_then(Value::as_array)
+            .and_then(|g| g.first())
+            .expect("first gem");
+        assert_eq!(
+            first_gem.get("nameSpec").and_then(Value::as_str),
+            Some("Mace Strike")
+        );
+
+        // skills.setGemGroup: replace the group with that same Mace Strike gem and
+        // re-resolve. It mutates the live build and echoes the groupId back.
+        let set_group = bridge
+            .request(
+                "skills.setGemGroup",
+                json!({
+                    "buildId": build_id,
+                    "groupId": group_id,
+                    "gems": [{ "nameSpec": "Mace Strike", "level": 20, "quality": 0 }],
+                }),
+            )
+            .expect("skills.setGemGroup");
+        assert_eq!(
+            set_group.get("groupId").and_then(Value::as_str),
+            Some(group_id.as_str())
+        );
+
+        // config.getOptions: the flat option list carries the always-eligible
+        // conditionEnemyShocked check option (modern_api_config_spec known-good).
+        let options = bridge
+            .request("config.getOptions", json!({ "buildId": build_id }))
+            .expect("config.getOptions");
+        let option_list = options
+            .get("options")
+            .and_then(Value::as_array)
+            .expect("options array");
+        assert!(
+            option_list.iter().any(|c| c.get("optionId").and_then(Value::as_str)
+                == Some("conditionEnemyShocked")),
+            "config.getOptions must expose the conditionEnemyShocked option"
+        );
+
+        // config.setOption: toggle that real option on. It mutates the live build and
+        // echoes the optionId back (an unknown optionId would be a CoreError).
+        let set_option = bridge
+            .request(
+                "config.setOption",
+                json!({ "buildId": build_id, "optionId": "conditionEnemyShocked", "value": true }),
+            )
+            .expect("config.setOption");
+        assert_eq!(
+            set_option.get("optionId").and_then(Value::as_str),
+            Some("conditionEnemyShocked")
+        );
+
+        // calc.explain: the live Life breakdown resolves to the deterministic 65 the
+        // fixture computes (62 base x 1.05), proving the real breakdown trace runs.
+        let explain = bridge
+            .request(
+                "calc.explain",
+                json!({ "buildId": build_id, "statId": "Life" }),
+            )
+            .expect("calc.explain");
+        assert_eq!(explain.get("statId").and_then(Value::as_str), Some("Life"));
+        assert_eq!(explain.get("finalValue").and_then(Value::as_f64), Some(65.0));
+
+        assert!(bridge.is_running());
     }
 
     #[test]

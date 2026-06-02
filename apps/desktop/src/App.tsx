@@ -29,19 +29,38 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AppShell,
+  CalcsPanel,
   CommandPalette,
+  ConfigPanel,
   ItemsPanel,
   OverviewPanel,
+  SkillsPanel,
   WarningPanel,
+  buildCalcsModel,
+  buildConfigModel,
   buildEquippedGridModel,
   buildOverviewModel,
+  buildSkillGroupsModel,
   buildWarningModel,
   stringsEn,
   stringsKo,
   NAV_ITEMS,
 } from '@pob2/ui';
-import type { Command, EquippedGridModel, InspectedItem, Locale, NavTab } from '@pob2/ui';
-import type { CalcRunResponse } from '@pob2/schema';
+import type {
+  Command,
+  ConfigOptionValue,
+  ConfigPresetId,
+  EquippedGridModel,
+  InspectedItem,
+  Locale,
+  NavTab,
+} from '@pob2/ui';
+import type {
+  CalcExplainResponse,
+  CalcRunResponse,
+  ConfigGetOptionsResponse,
+  SkillsGetGroupsResponse,
+} from '@pob2/schema';
 import type { BuildSession, OpenResult, OpenSource, SaveFormat } from './build-session.js';
 
 /** No build is loaded yet, so the calc result carries no stats. */
@@ -49,6 +68,12 @@ const EMPTY_CALC: CalcRunResponse = { buildId: '', stats: [] };
 
 /** Empty equipped grid: every slot a card, none occupied (DESIGN §10.4, §6.4). */
 const EMPTY_GRID: EquippedGridModel = buildEquippedGridModel([]);
+
+/** No build is loaded yet, so the build has no socket groups (DESIGN §10.5). */
+const EMPTY_SKILL_GROUPS: SkillsGetGroupsResponse = { groups: [] };
+
+/** No build is loaded yet, so the build has no config options (DESIGN §10.8). */
+const EMPTY_CONFIG_OPTIONS: ConfigGetOptionsResponse = { options: [] };
 
 /**
  * URL path ↔ nav tab map (DESIGN §10.2 routes; gates.mjs VISUAL routes
@@ -108,10 +133,29 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
   // The last clipboard-pasted item, staged for the Items inspector; undefined
   // until the §11.1 paste command runs (NO-FALLBACK, §6.4).
   const [pastedItem, setPastedItem] = useState<InspectedItem | undefined>(undefined);
+  // The open build's socket-group cards (§10.5) and config-option cards (§10.8),
+  // refreshed on each open(); empty until a build is opened — never fabricated.
+  const [skillGroups, setSkillGroups] = useState<SkillsGetGroupsResponse>(EMPTY_SKILL_GROUPS);
+  const [configOptions, setConfigOptions] =
+    useState<ConfigGetOptionsResponse>(EMPTY_CONFIG_OPTIONS);
+  // calc.explain traces fetched lazily as Calcs stat rows are expanded (§10.7),
+  // keyed by stat id; empty until a row is expanded (NO-FALLBACK — no fake trace).
+  const [calcExplains, setCalcExplains] = useState<Map<string, CalcExplainResponse>>(
+    () => new Map(),
+  );
+  // The calc.run from BEFORE the last build mutation, for the §10.7 before/after
+  // delta; undefined until a mutation re-runs calc (never a fabricated baseline).
+  const [prevStats, setPrevStats] = useState<CalcRunResponse | undefined>(undefined);
 
   const calc = build?.stats ?? EMPTY_CALC;
   const overview = buildOverviewModel(calc, build?.summary ?? {});
   const warnings = buildWarningModel({ calc, unsupported: [] });
+  // The §10.5 skill-group, §10.8 config, and §10.7 Calcs breakdown view-models
+  // derive purely from the open build's data (NO-FALLBACK: empty inputs → empty
+  // cards/options, missing stat rows, never invented values).
+  const skills = buildSkillGroupsModel(skillGroups);
+  const config = buildConfigModel(configOptions);
+  const calcs = buildCalcsModel(calc, [...calcExplains.values()], prevStats);
 
   // Keep window.location.pathname in lockstep with the active tab so the route is
   // shareable/bookmarkable and the VISUAL gate's route resolves to this screen
@@ -130,6 +174,44 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  // §11.1 "config preset 변경": apply a §10.8 scenario preset by writing each of
+  // its `{ optionId, value }` entries through config.setOption — which RE-RUNS
+  // calc.run (DESIGN §6.3 빌드 수정 → 즉시 재계산) — then refresh the Overview/Calcs
+  // from the LAST recomputed stats and re-fetch the config options (their values
+  // changed). The pre-mutation stats become the §10.7 before/after baseline; the
+  // now-stale calc.explain traces are cleared so they re-fetch lazily. Shared by
+  // both the §11.1 command and the ConfigPanel's onApplyPreset, so the two routes
+  // run the identical mutation flow.
+  const applyConfigPreset = useCallback(
+    async (_presetId: ConfigPresetId, payload: ConfigOptionValue[]) => {
+      if (!session || payload.length === 0) return;
+      setPrevStats(build?.stats ?? EMPTY_CALC);
+      let stats: CalcRunResponse | undefined;
+      for (const { optionId, value } of payload) {
+        stats = await session.setConfigOption(optionId, value);
+      }
+      if (stats !== undefined) {
+        setBuild((current) => (current ? { ...current, stats } : current));
+      }
+      setConfigOptions(await session.getConfigOptions());
+      setCalcExplains(new Map());
+    },
+    [session, build],
+  );
+
+  // §10.7 lazy calc.explain: fetch one stat's formula trace through the session and
+  // stage it for the Calcs breakdown. Already-loaded traces are not refetched (the
+  // CalcsPanel debounces and suppresses those), so this only adds new ones. Shared
+  // by the CalcsPanel's onExplain dispatch.
+  const explainStat = useCallback(
+    async (statId: string) => {
+      if (!session) return;
+      const explain = await session.explainStat(statId);
+      setCalcExplains((current) => new Map(current).set(statId, explain));
+    },
+    [session],
+  );
 
   // §11.1 build commands: one "go to tab" command per nav entry. titleKo/titleEn
   // are sourced from both locale dictionaries so the §11.2 bilingual search index
@@ -155,6 +237,14 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
       // Refresh the §10.4 equipped grid from the build's real getEquipped result.
       const equipped = await session.getEquipped();
       setGrid(buildEquippedGridModel(equipped.equipped));
+      // Populate the §10.5 Skills and §10.8 Config tabs from the build's real
+      // socket groups / config options (DESIGN §6.3 skills.getGroups /
+      // config.getOptions). A freshly-opened build starts with no calc.explain
+      // traces and no before/after baseline — both reset (NO-FALLBACK §6.4).
+      setSkillGroups(await session.getSkillGroups());
+      setConfigOptions(await session.getConfigOptions());
+      setCalcExplains(new Map());
+      setPrevStats(undefined);
     };
     const save = (format: SaveFormat) => session.save({ format });
 
@@ -202,12 +292,33 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
         aliases: ['clipboard', 'import', 'paste'],
         run: () => void pasteItem(),
       },
+      // §11.1 "config preset 변경": jump to the Config tab so the user can pick a
+      // §10.8 scenario preset; applying one runs the shared mutation flow above
+      // (config.setOption → recompute → Overview/Calcs refresh).
+      {
+        id: 'config-apply-preset',
+        titleKo: 'config preset 변경',
+        titleEn: 'Change Config Preset',
+        aliases: ['config', 'preset', 'scenario'],
+        run: () => selectTab('config'),
+      },
+      // §11.1 "계산 trace 열기": jump to the Calcs breakdown explorer, where
+      // expanding a stat row dispatches the lazy calc.explain (DESIGN §10.7).
+      {
+        id: 'calc-open-trace',
+        titleKo: '계산 trace 열기',
+        titleEn: 'Open Calc Trace',
+        aliases: ['calc', 'trace', 'explain', 'breakdown'],
+        run: () => selectTab('calcs'),
+      },
     ];
   }, [session, resolveOpenSource, resolveClipboardText, selectTab]);
 
   // The workspace pane is routed by the active tab (DESIGN §10.2): Items renders
-  // the §10.4 ItemsPanel (driven by the build's equipped grid + the last pasted
-  // item), every other tab keeps the Overview for now (later phases add panels).
+  // the §10.4 ItemsPanel, Skills the §10.5 SkillsPanel, Config the §10.8
+  // ConfigPanel, Calcs the §10.7 CalcsPanel; every other tab keeps the Overview.
+  // The Config/Calcs panels drive the §13.4 build-mutation flow (apply preset →
+  // recompute → Overview/Calcs refresh) via the shared handlers above.
   const workspace =
     activeTab === 'items' ? (
       <ItemsPanel
@@ -218,6 +329,12 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
         activeSetId="default"
         inspectedItem={pastedItem}
       />
+    ) : activeTab === 'skills' ? (
+      <SkillsPanel locale={locale} model={skills} />
+    ) : activeTab === 'config' ? (
+      <ConfigPanel locale={locale} model={config} onApplyPreset={applyConfigPreset} />
+    ) : activeTab === 'calcs' ? (
+      <CalcsPanel locale={locale} model={calcs} onExplain={explainStat} />
     ) : (
       <OverviewPanel locale={locale} model={overview} />
     );

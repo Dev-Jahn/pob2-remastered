@@ -25,9 +25,15 @@
  */
 import type {
   BuildSaveResponse,
+  CalcExplainResponse,
   CalcRunResponse,
+  ConfigGetOptionsResponse,
+  ConfigOptionCard,
   EquipDelta,
   EquippedItem,
+  ExplainSource,
+  ExplainSourceKind,
+  GemInput,
   ItemModInput,
   ItemsCompareResponse,
   ItemsCreateCustomResponse,
@@ -35,6 +41,9 @@ import type {
   ItemsParseClipboardResponse,
   Locale,
   ParsedItemMod,
+  SkillGemRef,
+  SkillGroupCard,
+  SkillsGetGroupsResponse,
   StatResult,
 } from '@pob2/schema';
 import {
@@ -65,6 +74,25 @@ export interface BuildSummary {
 export interface LoadResult {
   buildId: string;
   summary: BuildSummary;
+}
+
+/**
+ * What setGemGroup returns: the edited socket-group id, echoed by the runner
+ * (DESIGN §6.3 skills.setGemGroup). This is a write companion to skills.getGroups
+ * with no registry response schema (a request-only §6.3 type stub); its result is
+ * the plain `{ groupId }` ack the runner serializes.
+ */
+export interface SetGemGroupResult {
+  groupId: string;
+}
+
+/**
+ * What setConfigOption returns: the written option id, echoed by the runner
+ * (DESIGN §6.3 config.setOption). Like setGemGroup this is a write companion with
+ * no registry response schema; its result is the plain `{ optionId }` ack.
+ */
+export interface SetConfigOptionResult {
+  optionId: string;
 }
 
 export type CoreClientOptions = RunnerClientOptions;
@@ -259,6 +287,167 @@ export class CoreClient {
     )) as ItemsCompareResponse;
   }
 
+  /**
+   * The loaded build's socket-group cards (DESIGN §6.3 skills.getGroups, §10.5
+   * Skills tab). Validates the request against skills.getGroups:request, sends it to
+   * the runner, and validates the assembled {groups} against skills.getGroups:response.
+   *
+   * The runner emits each group as {groupId, label, enabled, gems[], spirit:{…},
+   * reservation:{…}} with the gems in ONE list; the registry SkillGroupCard splits
+   * active vs support gems and carries `spirit`/`reservation` as scalar numbers
+   * (§10.5 "reservation과 spirit cost를 즉시 표시"). This lifts the runner shape into
+   * that card shape — `spirit` is the group's reserved spirit, `reservation` its
+   * reserved mana — then the registry response schema validates it.
+   */
+  async getSkillGroups(buildId: string): Promise<SkillsGetGroupsResponse> {
+    return (await this.runner.request(
+      'skills.getGroups',
+      { buildId },
+      (p) => ({ buildId: (p as { buildId: string }).buildId }),
+      (r) => ({ groups: (r as { groups?: unknown[] }).groups?.map(toSkillGroupCard) ?? [] }),
+    )) as SkillsGetGroupsResponse;
+  }
+
+  /**
+   * REPLACE a socket group's gem list, then return the runner's `{ groupId }` ack
+   * (DESIGN §6.3 skills.setGemGroup, §10.5). This is the write companion to
+   * getSkillGroups: it ACTUALLY mutates the live build (the runner re-resolves the
+   * group and re-drives the calc), so a subsequent calcRun observes the genuine
+   * change. It is a request-only §6.3 type stub with NO registry response schema, so
+   * it cannot reuse the registry-validated request() helper; instead the request is
+   * validated client-side (a non-empty buildId/groupId, like the runner's own
+   * guard) and the wire result is read straight through. A runner method-not-found
+   * surfaces as a structured CoreClientError (UPSTREAM_INCOMPATIBLE) from the
+   * transport — never a faked success (NO-FALLBACK, DESIGN §6.4).
+   */
+  async setGemGroup(
+    buildId: string,
+    groupId: string,
+    gems: GemInput[],
+  ): Promise<SetGemGroupResult> {
+    if (!buildId) {
+      throw new CoreClientError({
+        code: 'UPSTREAM_INCOMPATIBLE',
+        message: 'skills.setGemGroup requires a non-empty buildId',
+      });
+    }
+    if (!groupId) {
+      throw new CoreClientError({
+        code: 'UPSTREAM_INCOMPATIBLE',
+        message: 'skills.setGemGroup requires a non-empty groupId',
+      });
+    }
+    const result = (await this.runner.call('skills.setGemGroup', {
+      buildId,
+      groupId,
+      gems,
+    })) as { groupId?: unknown };
+    if (!result || typeof result.groupId !== 'string') {
+      throw new CoreClientError({
+        code: 'UPSTREAM_INCOMPATIBLE',
+        message: 'skills.setGemGroup did not return a groupId',
+      });
+    }
+    return { groupId: result.groupId };
+  }
+
+  /**
+   * The loaded build's config-option cards (DESIGN §6.3 config.getOptions, §10.8
+   * Config tab). Validates the request against config.getOptions:request, sends it
+   * to the runner, and validates the assembled {options} against
+   * config.getOptions:response.
+   *
+   * The runner emits each option as {optionId, type, label, value, list?, and the
+   * dependency hints ifSkillData/ifEnemyCond/ifCond/ifOption}; the registry
+   * ConfigOptionCard fixes the shape to {optionId, type, label, value,
+   * dependentModifiers}. This collects the four dependency-hint lists into the one
+   * `dependentModifiers` list (§10.8 "각 config option은 dependent modifier와 연결"),
+   * then the registry response schema validates it.
+   */
+  async getConfigOptions(buildId: string): Promise<ConfigGetOptionsResponse> {
+    return (await this.runner.request(
+      'config.getOptions',
+      { buildId },
+      (p) => ({ buildId: (p as { buildId: string }).buildId }),
+      (r) => ({ options: (r as { options?: unknown[] }).options?.map(toConfigOptionCard) ?? [] }),
+    )) as ConfigGetOptionsResponse;
+  }
+
+  /**
+   * WRITE one config option's value, then return the runner's `{ optionId }` ack
+   * (DESIGN §6.3 config.setOption, §10.8). This is the write companion to
+   * getConfigOptions: it ACTUALLY mutates the live build (the runner rebuilds the
+   * config mod lists and re-drives the calc), so a subsequent calcRun observes the
+   * genuine change. Like setGemGroup it is a request-only §6.3 type stub with NO
+   * registry response schema, so the request is validated client-side (a non-empty
+   * buildId/optionId) and the wire result is read through. A runner method-not-found
+   * surfaces as a structured CoreClientError (UPSTREAM_INCOMPATIBLE) — never a faked
+   * success (NO-FALLBACK, DESIGN §6.4).
+   */
+  async setConfigOption(
+    buildId: string,
+    optionId: string,
+    value: unknown,
+  ): Promise<SetConfigOptionResult> {
+    if (!buildId) {
+      throw new CoreClientError({
+        code: 'UPSTREAM_INCOMPATIBLE',
+        message: 'config.setOption requires a non-empty buildId',
+      });
+    }
+    if (!optionId) {
+      throw new CoreClientError({
+        code: 'UPSTREAM_INCOMPATIBLE',
+        message: 'config.setOption requires a non-empty optionId',
+      });
+    }
+    const result = (await this.runner.call('config.setOption', {
+      buildId,
+      optionId,
+      value,
+    })) as { optionId?: unknown };
+    if (!result || typeof result.optionId !== 'string') {
+      throw new CoreClientError({
+        code: 'UPSTREAM_INCOMPATIBLE',
+        message: 'config.setOption did not return an optionId',
+      });
+    }
+    return { optionId: result.optionId };
+  }
+
+  /**
+   * The formula trace for one stat (DESIGN §6.3 calc.explain, §10.7 Calcs tab).
+   * Validates the request against calc.explain:request, drives the runner's
+   * breakdown machine, and validates the assembled trace against
+   * calc.explain:response.
+   *
+   * The runner emits {statId, upstreamRawStatId, finalValue, label, trace:string[],
+   * sources:[{kind, source, value, name?, sourceName?, …}]}; the registry
+   * CalcExplainResponse fixes the shape to {statId, finalValue, label, sources:
+   * [{kind, label, value}], formula:string, upstreamStatId}. This joins the trace
+   * lines into the single `formula` string, renames `upstreamRawStatId` to
+   * `upstreamStatId`, and maps each contribution source to its {kind, label, value}
+   * card (§10.7), then the registry response schema validates it.
+   */
+  async explainStat(
+    buildId: string,
+    statId: string,
+    activeSkillId?: string,
+  ): Promise<CalcExplainResponse> {
+    const request = activeSkillId ? { buildId, statId, activeSkillId } : { buildId, statId };
+    return (await this.runner.request(
+      'calc.explain',
+      request,
+      (p) => {
+        const params = p as { buildId: string; statId: string; activeSkillId?: string };
+        const wire: Record<string, unknown> = { buildId: params.buildId, statId: params.statId };
+        if (params.activeSkillId !== undefined) wire.activeSkillId = params.activeSkillId;
+        return wire;
+      },
+      (r) => assembleExplain(r, statId),
+    )) as CalcExplainResponse;
+  }
+
   /** Decode a PoB share code to XML and load it (DESIGN §6.3 loadShareCode). */
   async loadShareCode(code: string): Promise<LoadResult> {
     // Size limit BEFORE decode (DESIGN §14.2 "share code decode는 size limit
@@ -334,6 +523,185 @@ export class CoreClient {
  */
 function coerceLocale(value: unknown): Locale {
   return value === 'ko-KR' || value === 'en-US' ? value : 'en-US';
+}
+
+// ----------------------------------------------------------------------------
+// Wire -> registry assemblers for the §6.3 skills/config/calc.explain methods.
+// The runner and the registry are not byte-identical (DESIGN §6.4): each helper
+// lifts the runner's wire shape into the schema response shape the registry
+// validates. Every field is explicitly copied — no live runner sub-table is
+// passed through, and a missing scalar resolves to an explicit default (NO null
+// placeholder), so the assembled value always satisfies the response schema.
+// ----------------------------------------------------------------------------
+
+/** One gem as the runner serializes it inside a skills.getGroups socket group. */
+interface WireGem {
+  gemId?: unknown;
+  nameSpec?: unknown;
+  level?: unknown;
+  quality?: unknown;
+  enabled?: unknown;
+  isSupport?: unknown;
+}
+
+/** One socket group as the runner serializes it for skills.getGroups. */
+interface WireGroup {
+  groupId?: unknown;
+  label?: unknown;
+  enabled?: unknown;
+  gems?: WireGem[];
+  spirit?: { reserved?: unknown };
+  reservation?: { mana?: { reserved?: unknown } };
+}
+
+/** Map a runner wire gem to the registry SkillGemRef (DESIGN §6.3, §10.5). */
+function toSkillGemRef(gem: WireGem): SkillGemRef {
+  return {
+    // The runner may drop gemId once a gem resolves; the schema requires a string,
+    // so default to "" rather than fabricating an id.
+    gemId: typeof gem.gemId === 'string' ? gem.gemId : '',
+    name: typeof gem.nameSpec === 'string' ? gem.nameSpec : '',
+    level: typeof gem.level === 'number' ? gem.level : 0,
+    quality: typeof gem.quality === 'number' ? gem.quality : 0,
+    enabled: gem.enabled === true,
+  };
+}
+
+/**
+ * Map a runner wire socket group to the registry SkillGroupCard (DESIGN §6.3
+ * skills.getGroups, §10.5). The runner carries the gems in ONE list with an
+ * `isSupport` flag; the card splits them into activeGems / supportGems. `spirit`
+ * is the group's reserved spirit and `reservation` its reserved mana — the §10.5
+ * "reservation과 spirit cost를 즉시 표시" scalars (absent -> 0).
+ */
+function toSkillGroupCard(value: unknown): SkillGroupCard {
+  const group = (value ?? {}) as WireGroup;
+  const activeGems: SkillGemRef[] = [];
+  const supportGems: SkillGemRef[] = [];
+  for (const gem of group.gems ?? []) {
+    (gem.isSupport === true ? supportGems : activeGems).push(toSkillGemRef(gem));
+  }
+  return {
+    groupId: typeof group.groupId === 'string' ? group.groupId : '',
+    label: typeof group.label === 'string' ? group.label : '',
+    enabled: group.enabled === true,
+    spirit: typeof group.spirit?.reserved === 'number' ? group.spirit.reserved : 0,
+    reservation:
+      typeof group.reservation?.mana?.reserved === 'number' ? group.reservation.mana.reserved : 0,
+    activeGems,
+    supportGems,
+  };
+}
+
+/** The runner's per-option dependency-hint fields, joined into dependentModifiers. */
+const CONFIG_DEPENDENCY_FIELDS = ['ifSkillData', 'ifEnemyCond', 'ifCond', 'ifOption'] as const;
+
+/** One config option as the runner serializes it for config.getOptions. */
+interface WireOption {
+  optionId?: unknown;
+  type?: unknown;
+  label?: unknown;
+  value?: unknown;
+  ifSkillData?: unknown;
+  ifEnemyCond?: unknown;
+  ifCond?: unknown;
+  ifOption?: unknown;
+}
+
+/**
+ * Map a runner wire option to the registry ConfigOptionCard (DESIGN §6.3
+ * config.getOptions, §10.8). The runner surfaces the dependent-modifier hints as
+ * the four separate ifSkillData/ifEnemyCond/ifCond/ifOption lists; the card joins
+ * them into the one `dependentModifiers` list (§10.8 "각 config option은 dependent
+ * modifier와 연결"). `value` is left as-is (a check is boolean, a list/count is
+ * string/number) — the schema leaves it unconstrained.
+ */
+function toConfigOptionCard(value: unknown): ConfigOptionCard {
+  const option = (value ?? {}) as WireOption;
+  const dependentModifiers: string[] = [];
+  for (const field of CONFIG_DEPENDENCY_FIELDS) {
+    const hint = option[field];
+    if (Array.isArray(hint)) {
+      for (const id of hint) if (typeof id === 'string') dependentModifiers.push(id);
+    }
+  }
+  return {
+    optionId: typeof option.optionId === 'string' ? option.optionId : '',
+    type: typeof option.type === 'string' ? option.type : '',
+    label: typeof option.label === 'string' ? option.label : '',
+    value: option.value,
+    dependentModifiers,
+  };
+}
+
+/** The closed ExplainSource kind set the registry response schema accepts. */
+const EXPLAIN_SOURCE_KINDS: readonly ExplainSourceKind[] = [
+  'item',
+  'passive',
+  'skillGem',
+  'supportGem',
+  'config',
+  'buff',
+];
+
+/** One contribution source as the runner serializes it inside calc.explain. */
+interface WireExplainSource {
+  kind?: unknown;
+  source?: unknown;
+  sourceName?: unknown;
+  name?: unknown;
+  value?: unknown;
+}
+
+/** Map a runner wire contribution source to the registry ExplainSource (§10.7). */
+function toExplainSource(value: unknown): ExplainSource {
+  const src = (value ?? {}) as WireExplainSource;
+  // The runner already classified the source into the §10.7 bucket; keep only a
+  // value in the closed kind set, defaulting to the catch-all "buff" otherwise.
+  const kind = (EXPLAIN_SOURCE_KINDS as readonly string[]).includes(src.kind as string)
+    ? (src.kind as ExplainSourceKind)
+    : 'buff';
+  // Display label (DESIGN §6.4 "표시용 localized label"): the human slot/mod name when
+  // present, else the raw core source string — never a fabricated label.
+  const label =
+    typeof src.sourceName === 'string' && src.sourceName.length > 0
+      ? src.sourceName
+      : typeof src.name === 'string' && src.name.length > 0
+        ? src.name
+        : typeof src.source === 'string'
+          ? src.source
+          : '';
+  return { kind, label, value: typeof src.value === 'number' ? src.value : 0 };
+}
+
+/**
+ * Lift the runner's flat breakdown into the registry CalcExplainResponse (DESIGN
+ * §6.3 calc.explain, §10.7). The runner emits the formula trace as a string ARRAY
+ * (the breakdown array part) and the upstream id as `upstreamRawStatId`; the card
+ * joins the trace lines into the single `formula` string and renames the id to
+ * `upstreamStatId`. The contribution list is mapped per source to {kind, label,
+ * value}. `statId` falls back to the requested id when the runner omits it.
+ */
+function assembleExplain(value: unknown, requestedStatId: string): CalcExplainResponse {
+  const r = (value ?? {}) as {
+    statId?: unknown;
+    upstreamRawStatId?: unknown;
+    finalValue?: unknown;
+    label?: unknown;
+    trace?: unknown;
+    sources?: unknown[];
+  };
+  const traceLines = Array.isArray(r.trace)
+    ? r.trace.filter((l): l is string => typeof l === 'string')
+    : [];
+  return {
+    statId: typeof r.statId === 'string' ? r.statId : requestedStatId,
+    finalValue: typeof r.finalValue === 'number' ? r.finalValue : 0,
+    label: typeof r.label === 'string' ? r.label : requestedStatId,
+    sources: (r.sources ?? []).map(toExplainSource),
+    formula: traceLines.join('\n'),
+    upstreamStatId: typeof r.upstreamRawStatId === 'string' ? r.upstreamRawStatId : requestedStatId,
+  };
 }
 
 /**

@@ -117,4 +117,86 @@ export const stringsKo: Record<StringKey, string> = {
   'items.custom.base': '기본 아이템 (Base Item)',
   'items.custom.mods': '수정값, 한 줄에 하나씩 (Modifiers, one per line)',
   'items.custom.create': '생성 (Create)',
+
+  // Skills tab redesign (DESIGN §10.5). The 2-region layout headings: the
+  // skill-group card list and the main-skill inspector.
+  'skills.title': '스킬 (Skills)',
+  'skills.groups': '스킬 그룹 (Skill Groups)',
+  'skills.inspector': '인스펙터 (Inspector)',
+
+  // Skill-group card: the group enabled toggle and the immediate reservation /
+  // spirit cost (DESIGN §10.5 "reservation과 spirit cost를 즉시 표시").
+  'skills.group.enabled': '활성화 (Enabled)',
+  'skills.reservation': '예약 (Reservation)',
+  'skills.spirit': '정신력 (Spirit)',
+  'skills.gem.enabled': '젬 활성화 (Gem Enabled)',
+  'skills.gem.level': '레벨 (Level)',
+  'skills.gem.quality': '퀄리티 (Quality)',
+
+  // Gem category chips (DESIGN §10.5 "active/support/buff/aura/minion 구분 chip").
+  // An active gem with no category metadata reads `unsupported` (§6.4, §11.3).
+  'skills.category.active': '액티브 (Active)',
+  'skills.category.support': '보조 (Support)',
+  'skills.category.buff': '버프 (Buff)',
+  'skills.category.aura': '오라 (Aura)',
+  'skills.category.minion': '소환수 (Minion)',
+  'skills.category.unsupported': '미지원 (Unsupported)',
+
+  // Main-skill inspector sections (DESIGN §10.5 inspector: damage breakdown,
+  // support gem contribution, gem level/quality delta).
+  'skills.inspector.empty': '검토할 스킬 그룹을 선택하세요 (Select a skill group to inspect)',
+  'skills.inspector.damageBreakdown': '피해 분석 (Damage Breakdown)',
+  'skills.inspector.supportContribution': '보조 젬 기여도 (Support Gem Contribution)',
+  'skills.inspector.gemDelta': '젬 레벨 / 퀄리티 변화 (Gem Level / Quality Delta)',
+
+  // Config tab redesign (DESIGN §10.8). The 2-region layout headings: the
+  // scenario-preset selector and the typed option list.
+  'config.title': '설정 (Config)',
+  'config.presets': '시나리오 프리셋 (Scenario Presets)',
+  'config.options': '옵션 (Options)',
+
+  // The §10.8 scenario presets (general mapping / bossing / full charges /
+  // shocked enemy / cursed enemy / low life / custom scenario).
+  'config.preset.generalMapping': '일반 맵핑 (General Mapping)',
+  'config.preset.bossing': '보스전 (Bossing)',
+  'config.preset.fullCharges': '최대 충전 (Full Charges)',
+  'config.preset.shockedEnemy': '감전된 적 (Shocked Enemy)',
+  'config.preset.cursedEnemy': '저주받은 적 (Cursed Enemy)',
+  'config.preset.lowLife': '저생명 (Low Life)',
+  'config.preset.custom': '사용자 지정 (Custom Scenario)',
+
+  // Config option row: the affected-calc-items label (DESIGN §10.8 "변경 시 영향을
+  // 받는 계산 항목"), and the unsupported-control marker (§6.4, §11.3).
+  'config.affects': '영향 (Affects)',
+  'config.unsupported': '미지원 (Unsupported)',
+
+  // Calcs tab breakdown explorer (DESIGN §10.7). The panel title, the per-stat
+  // delta / final-value chrome, and the formula-trace labels (source list /
+  // formula / upstream raw stat id), plus the "trace 없음" + missing markers.
+  'calcs.title': '계산 (Calcs)',
+  'calcs.finalValue': '최종값 (Final Value)',
+  'calcs.delta': '변화 (Delta)',
+  'calcs.missing': '값 없음 (Not computed)',
+  'calcs.noTrace': 'trace 없음 (No trace)',
+  'calcs.sources': '기여도 (Contributions)',
+  'calcs.formula': '공식 (Formula)',
+  'calcs.upstreamStatId': '원본 스탯 ID (Upstream Stat Id)',
+
+  // Top-level breakdown section names (DESIGN §10.7 tree: Summary / Offence /
+  // Defence / Resource / Raw trace). The labels of the §10.7 breakdown spec.
+  'calcs.section.summary': '요약 (Summary)',
+  'calcs.section.offence': '공격 (Offence)',
+  'calcs.section.defence': '방어 (Defence)',
+  'calcs.section.resource': '자원 (Resource)',
+  'calcs.section.rawTrace': '원시 trace (Raw Trace)',
+
+  // Contribution source-kind labels (DESIGN §10.7 "기여 source list" classified by
+  // origin — the ExplainSource.kind union: item/passive/skillGem/supportGem/
+  // config/buff). The trace renders these next to each source's label and value.
+  'calcs.source.item': '아이템 (Item)',
+  'calcs.source.passive': '패시브 (Passive)',
+  'calcs.source.skillGem': '스킬 젬 (Skill Gem)',
+  'calcs.source.supportGem': '보조 젬 (Support Gem)',
+  'calcs.source.config': '설정 (Config)',
+  'calcs.source.buff': '버프 (Buff)',
 };

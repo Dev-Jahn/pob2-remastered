@@ -25,14 +25,18 @@
  */
 import type {
   BuildSaveResponse,
+  CalcExplainResponse,
   CalcRunResponse,
+  ConfigGetOptionsResponse,
   EquippedItem,
+  GemInput,
   ItemModInput,
   ItemsCompareResponse,
   ItemsCreateCustomResponse,
   ItemsGetEquippedResponse,
   ItemsParseClipboardResponse,
   Locale,
+  SkillsGetGroupsResponse,
 } from '@pob2/schema';
 import type { BuildSummary, InspectedItem } from '@pob2/ui';
 
@@ -61,6 +65,20 @@ export interface BuildClient {
   createCustom(baseId: string, mods: ItemModInput[]): Promise<ItemsCreateCustomResponse>;
   /** items.compare — stat delta of equipping `item` in `slot` (DESIGN §6.3, §16.3). */
   equipDelta(buildId: string, item: EquippedItem, slot: string): Promise<ItemsCompareResponse>;
+  /** skills.getGroups — the build's socket-group cards (DESIGN §6.3, §10.5). */
+  getSkillGroups(buildId: string): Promise<SkillsGetGroupsResponse>;
+  /** skills.setGemGroup — replace a group's gem list, returns the group ack (§6.3, §10.5). */
+  setGemGroup(buildId: string, groupId: string, gems: GemInput[]): Promise<{ groupId: string }>;
+  /** config.getOptions — the build's config-option cards (DESIGN §6.3, §10.8). */
+  getConfigOptions(buildId: string): Promise<ConfigGetOptionsResponse>;
+  /** config.setOption — write one option's value, returns the option ack (§6.3, §10.8). */
+  setConfigOption(buildId: string, optionId: string, value: unknown): Promise<{ optionId: string }>;
+  /** calc.explain — the formula trace for one stat (DESIGN §6.3, §10.7). */
+  explainStat(
+    buildId: string,
+    statId: string,
+    activeSkillId?: string,
+  ): Promise<CalcExplainResponse>;
 }
 
 /** What `open()` accepts: build XML or a PoB share code (DESIGN §12.2, §10.9). */
@@ -113,6 +131,33 @@ export interface BuildSession {
    * item is independent of the loaded build.
    */
   parseClipboard(text: string, localeHint?: Locale): Promise<ParsedItemResult>;
+  /**
+   * The open build's socket-group cards (DESIGN §6.3 skills.getGroups, §10.5), the
+   * input to the Skills tab. Throws if no build has been opened (NO-FALLBACK).
+   */
+  getSkillGroups(): Promise<SkillsGetGroupsResponse>;
+  /**
+   * Replace one socket group's gem list (DESIGN §6.3 skills.setGemGroup, §10.5),
+   * then RE-RUN calc.run and return the refreshed stats (빌드 수정 → 즉시 재계산).
+   * Throws if no build has been opened (NO-FALLBACK).
+   */
+  setGemGroup(groupId: string, gems: GemInput[]): Promise<CalcRunResponse>;
+  /**
+   * The open build's config-option cards (DESIGN §6.3 config.getOptions, §10.8),
+   * the input to the Config tab. Throws if no build has been opened (NO-FALLBACK).
+   */
+  getConfigOptions(): Promise<ConfigGetOptionsResponse>;
+  /**
+   * Write one config option's value (DESIGN §6.3 config.setOption, §10.8), then
+   * RE-RUN calc.run and return the refreshed stats (빌드 수정 → 즉시 재계산). Throws
+   * if no build has been opened (NO-FALLBACK).
+   */
+  setConfigOption(optionId: string, value: unknown): Promise<CalcRunResponse>;
+  /**
+   * The formula trace for one stat (DESIGN §6.3 calc.explain, §10.7), the input to
+   * the Calcs breakdown explorer. Throws if no build has been opened (NO-FALLBACK).
+   */
+  explainStat(statId: string, activeSkillId?: string): Promise<CalcExplainResponse>;
 }
 
 /**
@@ -184,6 +229,46 @@ export function createBuildSession(client: BuildClient): BuildSession {
     async parseClipboard(text, localeHint) {
       const parsed = await client.parseClipboard(text, localeHint);
       return { item: toInspected(parsed), locale: parsed.locale };
+    },
+
+    async getSkillGroups() {
+      if (buildId === null) {
+        throw new Error('build-session: getSkillGroups() called before a build was opened');
+      }
+      return client.getSkillGroups(buildId);
+    },
+
+    async setGemGroup(groupId, gems) {
+      if (buildId === null) {
+        throw new Error('build-session: setGemGroup() called before a build was opened');
+      }
+      // Edit the build, then re-run the calc so the caller gets the refreshed
+      // stats (DESIGN §6.3 빌드 수정 → 즉시 재계산).
+      await client.setGemGroup(buildId, groupId, gems);
+      return client.calcRun(buildId);
+    },
+
+    async getConfigOptions() {
+      if (buildId === null) {
+        throw new Error('build-session: getConfigOptions() called before a build was opened');
+      }
+      return client.getConfigOptions(buildId);
+    },
+
+    async setConfigOption(optionId, value) {
+      if (buildId === null) {
+        throw new Error('build-session: setConfigOption() called before a build was opened');
+      }
+      // Edit the build, then re-run the calc (DESIGN §6.3 빌드 수정 → 즉시 재계산).
+      await client.setConfigOption(buildId, optionId, value);
+      return client.calcRun(buildId);
+    },
+
+    async explainStat(statId, activeSkillId) {
+      if (buildId === null) {
+        throw new Error('build-session: explainStat() called before a build was opened');
+      }
+      return client.explainStat(buildId, statId, activeSkillId);
     },
   };
 }

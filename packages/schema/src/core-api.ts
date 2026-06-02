@@ -2,12 +2,14 @@
  * Core API request/response contract — DESIGN.md §6.3 (request map) and §6.4
  * (serialization / error principles).
  *
- * Scope (per task `schema-types`): the four MVP methods named in
- * `tools/dev-workflow/phases.mjs` — `build.load`, `build.save`, `calc.run`,
- * `items.parseClipboard` — are fully typed (request + response) and backed by a
- * JSON Schema in `./schemas`. The remaining §6.3 methods are present as
- * request-only TYPE STUBS so the surface is documented and `CoreRequestMap` is
- * complete; their responses and schemas are deferred to later phases.
+ * Scope: the MVP methods named in `tools/dev-workflow/phases.mjs` — `build.load`,
+ * `build.save`, `calc.run`, `items.parseClipboard` (+ the items.* expansion) —
+ * plus the Phase 4 read methods `skills.getGroups`, `config.getOptions`, and
+ * `calc.explain` are fully typed (request + response) and backed by a JSON Schema
+ * in `./schemas`. The remaining §6.3 methods (incl. the `skills.setGemGroup` /
+ * `config.setOption` write companions) are present as request-only TYPE STUBS so
+ * the surface is documented and `CoreRequestMap` is complete; their responses and
+ * schemas are deferred to later phases.
  */
 import type { BuildId, BuildState, GemInput, Locale } from './build-state.js';
 
@@ -90,6 +92,79 @@ export interface EquipDelta {
   delta: number;
 }
 
+/**
+ * One gem slotted into a socket group, serialized for the Skills tab card
+ * (DESIGN §6.3 skills.getGroups, §10.5). Mirrors the core's `gemInstance`
+ * (gemId / nameSpec / level / quality / enabled) flattened to scalars — no live
+ * core gem table leaks (DESIGN §6.4).
+ */
+export interface SkillGemRef {
+  /** Internal gem id (core `gemInstance.gemId`). */
+  gemId: string;
+  /** Display name (core `gemInstance.nameSpec`). */
+  name: string;
+  level: number;
+  quality: number;
+  enabled: boolean;
+}
+
+/**
+ * One socket group serialized for the Skills tab (DESIGN §6.3 skills.getGroups,
+ * §10.5). Built from the core's `skillsTab.socketGroupList`: `enabled` is the
+ * group toggle; `spirit`/`reservation` surface the §10.5 "reservation과 spirit
+ * cost를 즉시 표시" values; active vs support gems are split into two lists.
+ */
+export interface SkillGroupCard {
+  /** Build-local socket-group id. */
+  groupId: string;
+  /** Display label (group/active-gem name). */
+  label: string;
+  enabled: boolean;
+  /** Spirit cost reserved by this group (DESIGN §10.5). */
+  spirit: number;
+  /** Mana/life reservation of this group (DESIGN §10.5). */
+  reservation: number;
+  /** Active (skill) gems in the group. */
+  activeGems: SkillGemRef[];
+  /** Support gems in the group. */
+  supportGems: SkillGemRef[];
+}
+
+/**
+ * One config option serialized for the Config tab (DESIGN §6.3
+ * config.getOptions, §10.8). Built from the core's `ConfigOptions` list:
+ * `optionId` is the option `var`, `type` is the control type (check/list/count/
+ * ...), `value` is the current setting, and `dependentModifiers` lists the mods
+ * the option's `apply` wires up (DESIGN §10.8 "각 config option은 dependent
+ * modifier와 연결").
+ */
+export interface ConfigOptionCard {
+  /** Option id (core option `var`). */
+  optionId: string;
+  /** Control type, e.g. "check" | "list" | "count". */
+  type: string;
+  /** Display label, localized for the requested locale (DESIGN §6.4). */
+  label: string;
+  /** Current value (boolean for check, string/number for list/count). */
+  value: unknown;
+  /** Modifier ids this option feeds when set (DESIGN §10.8). */
+  dependentModifiers: string[];
+}
+
+/** Origin of one contribution in a calc.explain trace (DESIGN §10.7 source list). */
+export type ExplainSourceKind = 'item' | 'passive' | 'skillGem' | 'supportGem' | 'config' | 'buff';
+
+/**
+ * One contribution to a stat's final value (DESIGN §10.7 "기여 source list").
+ * `kind` classifies the origin; `value` is that source's signed contribution.
+ */
+export interface ExplainSource {
+  kind: ExplainSourceKind;
+  /** Display label of the contributing source (item/passive/gem/config/buff). */
+  label: string;
+  value: number;
+}
+
 // ----------------------------------------------------------------------------
 // MVP request payloads
 // ----------------------------------------------------------------------------
@@ -128,6 +203,36 @@ export interface ItemsCompareRequest {
   buildId: BuildId;
   itemId: string;
   slot: string;
+}
+
+export interface SkillsGetGroupsRequest {
+  buildId: BuildId;
+}
+
+export interface ConfigGetOptionsRequest {
+  buildId: BuildId;
+}
+
+export interface CalcExplainRequest {
+  buildId: BuildId;
+  /** Machine-readable stat id to explain (DESIGN §10.7 "upstream raw stat id"). */
+  statId: string;
+  /** Restrict the explanation to one active skill, by its build-local id. */
+  activeSkillId?: string;
+}
+
+/** Replace a socket group's gem list (DESIGN §6.3 skills.setGemGroup, §10.5). */
+export interface SkillsSetGemGroupRequest {
+  buildId: BuildId;
+  groupId: string;
+  gems: GemInput[];
+}
+
+/** Set a single config option's value (DESIGN §6.3 config.setOption, §10.8). */
+export interface ConfigSetOptionRequest {
+  buildId: BuildId;
+  optionId: string;
+  value: unknown;
 }
 
 // ----------------------------------------------------------------------------
@@ -179,6 +284,36 @@ export interface ItemsCompareResponse {
   deltas: EquipDelta[];
 }
 
+/** The build's socket-group cards (DESIGN §6.3 skills.getGroups, §10.5). */
+export interface SkillsGetGroupsResponse {
+  groups: SkillGroupCard[];
+}
+
+/** The build's config-option cards (DESIGN §6.3 config.getOptions, §10.8). */
+export interface ConfigGetOptionsResponse {
+  options: ConfigOptionCard[];
+}
+
+/**
+ * The formula trace for one stat (DESIGN §6.3 calc.explain, §10.7 Calcs tab).
+ * `finalValue` is the computed value; `sources` is the contribution list;
+ * `formula` is the human-readable formula trace string; `upstreamStatId` is the
+ * raw stat id the trace feeds from (DESIGN §10.7 "upstream raw stat id").
+ */
+export interface CalcExplainResponse {
+  /** Machine-readable stat id this trace explains (DESIGN §6.4). */
+  statId: string;
+  finalValue: number;
+  /** Display label, localized for the requested locale (DESIGN §6.4). */
+  label: string;
+  /** Per-source contributions (DESIGN §10.7 "기여 source list"). */
+  sources: ExplainSource[];
+  /** Human-readable formula trace string (DESIGN §10.7 "formula trace"). */
+  formula: string;
+  /** Upstream raw stat id this value derives from (DESIGN §10.7). */
+  upstreamStatId: string;
+}
+
 // ----------------------------------------------------------------------------
 // Full §6.3 request map (MVP methods typed; rest are type-only stubs)
 // ----------------------------------------------------------------------------
@@ -205,9 +340,9 @@ export interface CoreRequestMap {
   'build.getState': { buildId: BuildId };
   'build.applyPatch': { buildId: BuildId; patch: BuildPatch[] };
 
-  // --- calc (MVP: run) ---
+  // --- calc (MVP: run, explain) ---
   'calc.run': CalcRunRequest;
-  'calc.explain': { buildId: BuildId; statId: string; activeSkillId?: string };
+  'calc.explain': CalcExplainRequest;
 
   // --- items (MVP: parseClipboard, getEquipped, createCustom, compare) ---
   'items.parseClipboard': ItemsParseClipboardRequest;
@@ -219,9 +354,13 @@ export interface CoreRequestMap {
   'tree.previewAllocate': { buildId: BuildId; nodeIds: string[] };
   'tree.applyAllocate': { buildId: BuildId; nodeIds: string[] };
 
-  // --- skills / config (deferred) ---
-  'skills.setGemGroup': { buildId: BuildId; groupId: string; gems: GemInput[] };
-  'config.setOption': { buildId: BuildId; optionId: string; value: unknown };
+  // --- skills (MVP read: getGroups; setGemGroup is the write companion) ---
+  'skills.getGroups': SkillsGetGroupsRequest;
+  'skills.setGemGroup': SkillsSetGemGroupRequest;
+
+  // --- config (MVP read: getOptions; setOption is the write companion) ---
+  'config.getOptions': ConfigGetOptionsRequest;
+  'config.setOption': ConfigSetOptionRequest;
 }
 
 /**
@@ -233,10 +372,13 @@ export interface CoreResponseMap {
   'build.load': BuildLoadResponse;
   'build.save': BuildSaveResponse;
   'calc.run': CalcRunResponse;
+  'calc.explain': CalcExplainResponse;
   'items.parseClipboard': ItemsParseClipboardResponse;
   'items.getEquipped': ItemsGetEquippedResponse;
   'items.createCustom': ItemsCreateCustomResponse;
   'items.compare': ItemsCompareResponse;
+  'skills.getGroups': SkillsGetGroupsResponse;
+  'config.getOptions': ConfigGetOptionsResponse;
 }
 
 /** The MVP method names, as a literal union. */

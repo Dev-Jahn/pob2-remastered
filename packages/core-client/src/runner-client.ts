@@ -310,8 +310,17 @@ export class RunnerClient {
     return this.child?.pid;
   }
 
-  /** Raw JSON-RPC call by method name with already-wire-shaped params. */
-  async call(method: string, params: Record<string, unknown>, timeoutMs: number): Promise<unknown> {
+  /**
+   * Raw JSON-RPC call by method name with already-wire-shaped params. `timeoutMs`
+   * defaults to the configured per-request timeout — the same value request() uses —
+   * so the registry-less write companions (skills.setGemGroup / config.setOption) can
+   * call without restating it.
+   */
+  async call(
+    method: string,
+    params: Record<string, unknown>,
+    timeoutMs: number = this.requestTimeoutMs,
+  ): Promise<unknown> {
     const id = this.nextId++;
     const frame = JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n';
     return this.writeFrame(id, frame, timeoutMs, `request '${method}'`);

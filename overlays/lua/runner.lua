@@ -145,6 +145,9 @@ local METHODS = {
 	["calc.run"] = function(params)
 		return getApi().calc.run(params and params.buildId)
 	end,
+	["calc.explain"] = function(params)
+		return getApi().calc.explain(params and params.buildId, params and params.statId, params and params.activeSkillId)
+	end,
 	["items.parseClipboard"] = function(params)
 		return getApi().items.parseClipboard(params and params.text)
 	end,
@@ -153,6 +156,18 @@ local METHODS = {
 	end,
 	["items.compare"] = function(params)
 		return getApi().items.compare(params and params.buildId, params and params.itemId, params and params.slot)
+	end,
+	["skills.getGroups"] = function(params)
+		return getApi().skills.getGroups(params and params.buildId)
+	end,
+	["skills.setGemGroup"] = function(params)
+		return getApi().skills.setGemGroup(params and params.buildId, params and params.groupId, params and params.gems)
+	end,
+	["config.getOptions"] = function(params)
+		return getApi().config.getOptions(params and params.buildId)
+	end,
+	["config.setOption"] = function(params)
+		return getApi().config.setOption(params and params.buildId, params and params.optionId, params and params.value)
 	end,
 }
 

@@ -27,16 +27,25 @@
  */
 import type {
   BuildSaveResponse,
+  CalcExplainResponse,
   CalcRunResponse,
+  ConfigGetOptionsResponse,
+  ConfigOptionCard,
   CoreError,
   EquipDelta,
   EquippedItem,
+  ExplainSource,
+  ExplainSourceKind,
+  GemInput,
   ItemModInput,
   ItemsCompareResponse,
   ItemsCreateCustomResponse,
   ItemsGetEquippedResponse,
   ItemsParseClipboardResponse,
   Locale,
+  SkillGemRef,
+  SkillGroupCard,
+  SkillsGetGroupsResponse,
   StatResult,
 } from '@pob2/schema';
 import type { BuildSummary } from '@pob2/ui';
@@ -271,5 +280,221 @@ export function createIpcCoreClient(options: IpcCoreClientOptions = {}): BuildCl
       // deltas means an empty diff, never a fabricated one (NO-FALLBACK).
       return { slot: result.slot ?? slot, deltas: result.deltas ?? [] };
     },
+
+    async getSkillGroups(buildId: string): Promise<SkillsGetGroupsResponse> {
+      const result = (await request('skills.getGroups', { buildId })) as { groups?: unknown[] };
+      // The runner carries gems in ONE list with an isSupport flag and spirit/
+      // reservation as nested tables; lift each group into the registry
+      // SkillGroupCard (active/support split, scalar spirit/reservation) — mirrors
+      // @pob2/core-client's getSkillGroups assembly (DESIGN §6.4, §10.5).
+      return { groups: result.groups?.map(toSkillGroupCard) ?? [] };
+    },
+
+    async setGemGroup(
+      buildId: string,
+      groupId: string,
+      gems: GemInput[],
+    ): Promise<{ groupId: string }> {
+      const result = (await request('skills.setGemGroup', { buildId, groupId, gems })) as {
+        groupId?: unknown;
+      };
+      if (typeof result.groupId !== 'string') {
+        throw new CoreClientError({
+          code: 'UPSTREAM_INCOMPATIBLE',
+          message: 'skills.setGemGroup did not return a groupId',
+        });
+      }
+      return { groupId: result.groupId };
+    },
+
+    async getConfigOptions(buildId: string): Promise<ConfigGetOptionsResponse> {
+      const result = (await request('config.getOptions', { buildId })) as { options?: unknown[] };
+      // The runner surfaces the dependency hints as four separate lists; the card
+      // joins them into the one dependentModifiers list — mirrors @pob2/core-client
+      // getConfigOptions assembly (DESIGN §6.4, §10.8).
+      return { options: result.options?.map(toConfigOptionCard) ?? [] };
+    },
+
+    async setConfigOption(
+      buildId: string,
+      optionId: string,
+      value: unknown,
+    ): Promise<{ optionId: string }> {
+      const result = (await request('config.setOption', { buildId, optionId, value })) as {
+        optionId?: unknown;
+      };
+      if (typeof result.optionId !== 'string') {
+        throw new CoreClientError({
+          code: 'UPSTREAM_INCOMPATIBLE',
+          message: 'config.setOption did not return an optionId',
+        });
+      }
+      return { optionId: result.optionId };
+    },
+
+    async explainStat(
+      buildId: string,
+      statId: string,
+      activeSkillId?: string,
+    ): Promise<CalcExplainResponse> {
+      const params = activeSkillId ? { buildId, statId, activeSkillId } : { buildId, statId };
+      const result = await request('calc.explain', params);
+      // The runner emits the trace as a string ARRAY and the id as
+      // upstreamRawStatId; assemble into the registry CalcExplainResponse — mirrors
+      // @pob2/core-client assembleExplain (DESIGN §6.4, §10.7).
+      return assembleExplain(result, statId);
+    },
+  };
+}
+
+// ----------------------------------------------------------------------------
+// Wire -> registry assemblers for the §6.3 skills/config/calc.explain methods.
+// The Rust host returns the runner's raw wire result, so these mirror the SAME
+// assembly @pob2/core-client applies (DESIGN §6.4): each field is explicitly
+// copied and a missing scalar resolves to an explicit default — no live runner
+// sub-table is passed through, so the assembled value satisfies the schema.
+// ----------------------------------------------------------------------------
+
+/** One gem as the runner serializes it inside a skills.getGroups socket group. */
+interface WireGem {
+  gemId?: unknown;
+  nameSpec?: unknown;
+  level?: unknown;
+  quality?: unknown;
+  enabled?: unknown;
+  isSupport?: unknown;
+}
+
+/** One socket group as the runner serializes it for skills.getGroups. */
+interface WireGroup {
+  groupId?: unknown;
+  label?: unknown;
+  enabled?: unknown;
+  gems?: WireGem[];
+  spirit?: { reserved?: unknown };
+  reservation?: { mana?: { reserved?: unknown } };
+}
+
+/** Map a runner wire gem to the registry SkillGemRef (DESIGN §6.3, §10.5). */
+function toSkillGemRef(gem: WireGem): SkillGemRef {
+  return {
+    gemId: typeof gem.gemId === 'string' ? gem.gemId : '',
+    name: typeof gem.nameSpec === 'string' ? gem.nameSpec : '',
+    level: typeof gem.level === 'number' ? gem.level : 0,
+    quality: typeof gem.quality === 'number' ? gem.quality : 0,
+    enabled: gem.enabled === true,
+  };
+}
+
+/** Map a runner wire socket group to the registry SkillGroupCard (DESIGN §6.3, §10.5). */
+function toSkillGroupCard(value: unknown): SkillGroupCard {
+  const group = (value ?? {}) as WireGroup;
+  const activeGems: SkillGemRef[] = [];
+  const supportGems: SkillGemRef[] = [];
+  for (const gem of group.gems ?? []) {
+    (gem.isSupport === true ? supportGems : activeGems).push(toSkillGemRef(gem));
+  }
+  return {
+    groupId: typeof group.groupId === 'string' ? group.groupId : '',
+    label: typeof group.label === 'string' ? group.label : '',
+    enabled: group.enabled === true,
+    spirit: typeof group.spirit?.reserved === 'number' ? group.spirit.reserved : 0,
+    reservation:
+      typeof group.reservation?.mana?.reserved === 'number' ? group.reservation.mana.reserved : 0,
+    activeGems,
+    supportGems,
+  };
+}
+
+/** The runner's per-option dependency-hint fields, joined into dependentModifiers. */
+const CONFIG_DEPENDENCY_FIELDS = ['ifSkillData', 'ifEnemyCond', 'ifCond', 'ifOption'] as const;
+
+/** One config option as the runner serializes it for config.getOptions. */
+interface WireOption {
+  optionId?: unknown;
+  type?: unknown;
+  label?: unknown;
+  value?: unknown;
+  ifSkillData?: unknown;
+  ifEnemyCond?: unknown;
+  ifCond?: unknown;
+  ifOption?: unknown;
+}
+
+/** Map a runner wire option to the registry ConfigOptionCard (DESIGN §6.3, §10.8). */
+function toConfigOptionCard(value: unknown): ConfigOptionCard {
+  const option = (value ?? {}) as WireOption;
+  const dependentModifiers: string[] = [];
+  for (const field of CONFIG_DEPENDENCY_FIELDS) {
+    const hint = option[field];
+    if (Array.isArray(hint)) {
+      for (const id of hint) if (typeof id === 'string') dependentModifiers.push(id);
+    }
+  }
+  return {
+    optionId: typeof option.optionId === 'string' ? option.optionId : '',
+    type: typeof option.type === 'string' ? option.type : '',
+    label: typeof option.label === 'string' ? option.label : '',
+    value: option.value,
+    dependentModifiers,
+  };
+}
+
+/** The closed ExplainSource kind set the registry response schema accepts. */
+const EXPLAIN_SOURCE_KINDS: readonly ExplainSourceKind[] = [
+  'item',
+  'passive',
+  'skillGem',
+  'supportGem',
+  'config',
+  'buff',
+];
+
+/** One contribution source as the runner serializes it inside calc.explain. */
+interface WireExplainSource {
+  kind?: unknown;
+  source?: unknown;
+  sourceName?: unknown;
+  name?: unknown;
+  value?: unknown;
+}
+
+/** Map a runner wire contribution source to the registry ExplainSource (§10.7). */
+function toExplainSource(value: unknown): ExplainSource {
+  const src = (value ?? {}) as WireExplainSource;
+  const kind = (EXPLAIN_SOURCE_KINDS as readonly string[]).includes(src.kind as string)
+    ? (src.kind as ExplainSourceKind)
+    : 'buff';
+  const label =
+    typeof src.sourceName === 'string' && src.sourceName.length > 0
+      ? src.sourceName
+      : typeof src.name === 'string' && src.name.length > 0
+        ? src.name
+        : typeof src.source === 'string'
+          ? src.source
+          : '';
+  return { kind, label, value: typeof src.value === 'number' ? src.value : 0 };
+}
+
+/** Lift the runner's flat breakdown into the registry CalcExplainResponse (§6.3, §10.7). */
+function assembleExplain(value: unknown, requestedStatId: string): CalcExplainResponse {
+  const r = (value ?? {}) as {
+    statId?: unknown;
+    upstreamRawStatId?: unknown;
+    finalValue?: unknown;
+    label?: unknown;
+    trace?: unknown;
+    sources?: unknown[];
+  };
+  const traceLines = Array.isArray(r.trace)
+    ? r.trace.filter((l): l is string => typeof l === 'string')
+    : [];
+  return {
+    statId: typeof r.statId === 'string' ? r.statId : requestedStatId,
+    finalValue: typeof r.finalValue === 'number' ? r.finalValue : 0,
+    label: typeof r.label === 'string' ? r.label : requestedStatId,
+    sources: (r.sources ?? []).map(toExplainSource),
+    formula: traceLines.join('\n'),
+    upstreamStatId: typeof r.upstreamRawStatId === 'string' ? r.upstreamRawStatId : requestedStatId,
   };
 }

@@ -74,10 +74,13 @@ const validRequests: Record<string, unknown> = {
   'build.load': { source: '<PathOfBuilding/>', format: 'xml' },
   'build.save': { buildId: 'b-1', format: 'shareCode' },
   'calc.run': { buildId: 'b-1', options: { activeSkillId: 'sk-1' } },
+  'calc.explain': { buildId: 'b-1', statId: 'TotalDPS', activeSkillId: 'sk-1' },
   'items.parseClipboard': { text: '아이템 텍스트', localeHint: 'ko-KR' },
   'items.getEquipped': { buildId: 'b-1' },
   'items.createCustom': { baseId: 'Runeforged Warpick', mods: [{ text: '+50 to maximum Life' }] },
   'items.compare': { buildId: 'b-1', itemId: '42', slot: 'Weapon 1' },
+  'skills.getGroups': { buildId: 'b-1' },
+  'config.getOptions': { buildId: 'b-1' },
 };
 
 const validResponses: Record<string, unknown> = {
@@ -86,6 +89,14 @@ const validResponses: Record<string, unknown> = {
   'calc.run': {
     buildId: 'b-1',
     stats: [{ statId: 'TotalDPS', value: 123456, label: '총 DPS' }],
+  },
+  'calc.explain': {
+    statId: 'TotalDPS',
+    finalValue: 8.16,
+    label: '총 DPS',
+    formula: 'Base 5 * (1 + 0.63 increased)',
+    upstreamStatId: 'TotalDPS',
+    sources: [{ kind: 'skillGem', label: 'Mace Strike', value: 5 }],
   },
   'items.parseClipboard': {
     locale: 'ko-KR',
@@ -97,6 +108,38 @@ const validResponses: Record<string, unknown> = {
   'items.compare': {
     slot: 'Weapon 1',
     deltas: [{ statId: 'TotalDPS', before: 1000, after: 1500, delta: 500 }],
+  },
+  'skills.getGroups': {
+    groups: [
+      {
+        groupId: '1',
+        label: 'Mace Strike',
+        enabled: true,
+        spirit: 0,
+        reservation: 0,
+        activeGems: [
+          {
+            gemId: 'MeleeMaceMacePlayer',
+            name: 'Mace Strike',
+            level: 1,
+            quality: 0,
+            enabled: true,
+          },
+        ],
+        supportGems: [],
+      },
+    ],
+  },
+  'config.getOptions': {
+    options: [
+      {
+        optionId: 'enemyIsBoss',
+        type: 'list',
+        label: 'Is the enemy a Boss?',
+        value: 'None',
+        dependentModifiers: ['Multiplier:BossDamage'],
+      },
+    ],
   },
 };
 

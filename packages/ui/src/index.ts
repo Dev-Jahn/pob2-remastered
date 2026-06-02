@@ -106,3 +106,123 @@ export { ClipboardImport } from './items/ClipboardImport.js';
 export type { ClipboardImportProps } from './items/ClipboardImport.js';
 export { CustomItemForm } from './items/CustomItemForm.js';
 export type { CustomItemFormProps, ItemBaseOption } from './items/CustomItemForm.js';
+
+// Skills view-models (DESIGN §10.5 Skills tab, §6.3 skills.getGroups /
+// setGemGroup, §6.4 NO-FALLBACK). Pure, framework-free transforms: the card-unit
+// skill-group model (group toggle + spirit/reservation + classified gem chips —
+// active/support/buff/aura/minion, with an explicit `unsupported` chip for an
+// active gem missing from the category metadata) and the GemInput payload builders
+// for setGemGroup (toggle / add / remove).
+export {
+  buildSkillGroupsModel,
+  groupToGemInputs,
+  toggleGemEnabled,
+  addGem,
+  removeGem,
+} from './skills/skills-model.js';
+export type {
+  GemChipCategory,
+  GemMetaCategory,
+  GemCategoryMeta,
+  SkillGemChip,
+  SkillGroupCardModel,
+  SkillsViewModel,
+} from './skills/skills-model.js';
+
+// Skills components: render the §10.5 view-models in the 2-region layout. SkillsPanel
+// (skill-group card list | main-skill inspector) owns the selected-skill state and
+// shows the inspector damage breakdown / support gem contribution / gem level·quality
+// delta; SkillGroupCard (group enabled toggle + immediate reservation/spirit costs +
+// classified active/support/buff/aura/minion chips, with an `unsupported` chip carrying
+// an icon AND a text label per §11.3); GemRow (one gem chip: category chip as a data
+// attribute never color-only, level/quality verbatim, enabled toggle).
+export { SkillsPanel } from './skills/SkillsPanel.js';
+export type {
+  SkillsPanelProps,
+  SkillInspectorModel,
+  DamageBreakdownRow,
+  SupportContributionRow,
+  GemDeltaRow,
+} from './skills/SkillsPanel.js';
+export { SkillGroupCard, GemRow } from './skills/SkillGroupCard.js';
+export type { SkillGroupCardProps, GemRowProps } from './skills/SkillGroupCard.js';
+
+// Config view-model (DESIGN §10.8 Config tab, §6.3 config.getOptions /
+// config.setOption, §6.4 NO-FALLBACK). Pure, framework-free transforms: the
+// scenario-preset-centric model (config.getOptions → typed check/count/list
+// option inputs, each wired to its dependent modifiers + the calc stats it
+// affects on change), the §10.8 scenario presets (general mapping / bossing /
+// full charges / shocked enemy / cursed enemy / low life / custom), and the
+// builders that reduce a preset (or a custom edit) to the { optionId, value }[]
+// config.setOption payload. An unknown control type → an explicit `unsupported`
+// input, never a guessed default.
+export {
+  buildConfigModel,
+  presetToConfigOptions,
+  setOptionValue,
+  CONFIG_PRESETS,
+} from './config/config-model.js';
+export type {
+  ConfigInputKind,
+  StatImpactMap,
+  ConfigOptionInput,
+  ConfigOptionValue,
+  ConfigPresetId,
+  ConfigPreset,
+  ConfigViewModel,
+} from './config/config-model.js';
+
+// Config components: render the §10.8 view-model in the 2-region layout. ConfigPanel
+// (scenario-preset selector | typed option list) owns the selected-preset state and
+// reduces a chosen preset to its { optionId, value }[] config.setOption payload;
+// ConfigOptionRow (one typed option: check checkbox / count number / list input, with
+// the immediately-shown affected calc items and a §10.1.6 visual split between the
+// editable control and the read-only results — an `unsupported` control type renders an
+// icon AND a text label per §11.3, never a fabricated default).
+export { ConfigPanel } from './config/ConfigPanel.js';
+export type { ConfigPanelProps } from './config/ConfigPanel.js';
+export { ConfigOptionRow } from './config/ConfigOptionRow.js';
+export type { ConfigOptionRowProps } from './config/ConfigOptionRow.js';
+
+// Calcs breakdown view-model (DESIGN §10.7 Calcs tab, §6.3 calc.run /
+// calc.explain, §6.4 NO-FALLBACK). Pure, framework-free transform: turns a
+// calc.run result (final values) + its calc.explain traces (sources / formula /
+// upstream raw stat id) into the §10.7 breakdown tree — Summary / Offence{Hit,
+// Crit, Ailments, DoT} / Defence{Life·ES·Mana, Resistances, Armour·Evasion, EHP}
+// / Resource / Raw trace. Each leaf exposes 최종값, before/after delta, the
+// contribution source list (item/passive/skillGem/supportGem/config/buff),
+// formula trace, upstream raw stat id, and 한국어/영어 labels. A stat absent from
+// calc.run → explicit present:false missing (never 0); a present stat with no
+// explain → explicit { explained:false, reason:'noTrace' } "trace 없음" marker.
+export { buildCalcsModel, CALCS_BREAKDOWN_SPEC } from './calcs/calcs-model.js';
+export type {
+  CalcsSectionId,
+  CalcsGroupId,
+  BreakdownDelta,
+  BreakdownTrace,
+  BreakdownStat,
+  CalcsGroup,
+  CalcsSection,
+  CalcsViewModel,
+  CalcsStatSpec,
+  CalcsGroupSpec,
+  CalcsSectionSpec,
+  CalcsBreakdownSpec,
+} from './calcs/calcs-model.js';
+
+// Calcs components: render the §10.7 breakdown view-model as the breakdown
+// explorer (gates VISUAL[4] '/calcs'). CalcsPanel (the Summary / Offence /
+// Defence / Resource + Raw-trace collapsible breakdown tree) owns the debounced
+// calc.explain dispatch — expanding a stat row without a loaded trace fires
+// onExplain(statId) so the host can fetch it; an already-loaded trace is never
+// refetched. BreakdownSection (one collapsible section: ko/en heading + sub-groups
+// of stat rows, each row showing 최종값 + before/after delta + 한/영 label and
+// expanding to its FormulaTrace). FormulaTrace (the contribution source list
+// classified item/passive/skillGem/supportGem/config/buff + formula trace string +
+// upstream raw stat id, or the localized "trace 없음" marker for an unexplained stat).
+export { CalcsPanel } from './calcs/CalcsPanel.js';
+export type { CalcsPanelProps } from './calcs/CalcsPanel.js';
+export { BreakdownSection } from './calcs/BreakdownSection.js';
+export type { BreakdownSectionProps } from './calcs/BreakdownSection.js';
+export { FormulaTrace } from './calcs/FormulaTrace.js';
+export type { FormulaTraceProps } from './calcs/FormulaTrace.js';

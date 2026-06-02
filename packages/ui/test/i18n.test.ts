@@ -99,6 +99,102 @@ describe('@pob2/ui i18n baseline', () => {
     }
   });
 
+  it('covers the Skills tab keys (DESIGN §10.5): groups, costs, category chips, inspector', () => {
+    // Skills tab (§10.5): the 2-region headings + group toggle, the immediate
+    // reservation / spirit costs, the active/support/buff/aura/minion category
+    // chips (with the explicit `unsupported` chip for an active gem missing its
+    // category metadata, §6.4), and the main-skill inspector sections.
+    const required: StringKey[] = [
+      // Region headings + group toggle.
+      'skills.groups',
+      'skills.inspector',
+      'skills.group.enabled',
+      // Immediate reservation / spirit cost.
+      'skills.reservation',
+      'skills.spirit',
+      // Gem fields.
+      'skills.gem.enabled',
+      'skills.gem.level',
+      'skills.gem.quality',
+      // Category chips.
+      'skills.category.active',
+      'skills.category.support',
+      'skills.category.buff',
+      'skills.category.aura',
+      'skills.category.minion',
+      'skills.category.unsupported',
+      // Inspector sections.
+      'skills.inspector.empty',
+      'skills.inspector.damageBreakdown',
+      'skills.inspector.supportContribution',
+      'skills.inspector.gemDelta',
+    ];
+    for (const key of required) {
+      expect(koKeys).toContain(key);
+      expect(enKeys).toContain(key);
+    }
+  });
+
+  it('covers the Config tab keys (DESIGN §10.8): presets, options, affects/unsupported', () => {
+    // Config tab (§10.8): the region headings, the scenario presets (general
+    // mapping / bossing / full charges / shocked enemy / cursed enemy / low life /
+    // custom), the affected-calc-items label, and the unsupported-control marker.
+    const required: StringKey[] = [
+      'config.presets',
+      'config.options',
+      'config.preset.generalMapping',
+      'config.preset.bossing',
+      'config.preset.fullCharges',
+      'config.preset.shockedEnemy',
+      'config.preset.cursedEnemy',
+      'config.preset.lowLife',
+      'config.preset.custom',
+      'config.affects',
+      'config.unsupported',
+    ];
+    for (const key of required) {
+      expect(koKeys).toContain(key);
+      expect(enKeys).toContain(key);
+    }
+  });
+
+  it('covers the Calcs tab keys (DESIGN §10.7): breakdown sections, sources, trace chrome', () => {
+    // Calcs tab (§10.7): the per-stat chrome (최종값 / delta / "값 없음" missing
+    // marker), the breakdown section names (Summary / Offence / Defence / Resource
+    // + Raw trace), the formula-trace chrome (기여 source list / formula / upstream
+    // raw stat id), the classified contribution source-kind labels (item / passive
+    // / skillGem / supportGem / config / buff), and the "trace 없음" marker.
+    const required: StringKey[] = [
+      // Per-stat chrome.
+      'calcs.finalValue',
+      'calcs.delta',
+      'calcs.missing',
+      // Breakdown section names.
+      'calcs.section.summary',
+      'calcs.section.offence',
+      'calcs.section.defence',
+      'calcs.section.resource',
+      'calcs.section.rawTrace',
+      // Formula-trace chrome.
+      'calcs.sources',
+      'calcs.formula',
+      'calcs.upstreamStatId',
+      // Contribution source-kind labels (DESIGN §10.7 source list classification).
+      'calcs.source.item',
+      'calcs.source.passive',
+      'calcs.source.skillGem',
+      'calcs.source.supportGem',
+      'calcs.source.config',
+      'calcs.source.buff',
+      // "trace 없음" marker (§6.4 NO-FALLBACK).
+      'calcs.noTrace',
+    ];
+    for (const key of required) {
+      expect(koKeys).toContain(key);
+      expect(enKeys).toContain(key);
+    }
+  });
+
   it('resolves every key to a non-empty string in both locales', () => {
     for (const locale of locales) {
       for (const key of enKeys) {

@@ -152,6 +152,80 @@ const equipDeltaSchema = {
   additionalProperties: false,
 } as const satisfies JSONSchema;
 
+/**
+ * SkillGemRef — one gem slotted into a socket group (DESIGN §6.3
+ * skills.getGroups, §10.5). The core `gemInstance` flattened to scalars.
+ */
+const skillGemRefSchema = {
+  type: 'object',
+  required: ['gemId', 'name', 'level', 'quality', 'enabled'],
+  properties: {
+    gemId: { type: 'string' },
+    name: { type: 'string' },
+    level: { type: 'number' },
+    quality: { type: 'number' },
+    enabled: { type: 'boolean' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+/**
+ * SkillGroupCard — one socket group serialized for the Skills tab (DESIGN §6.3
+ * skills.getGroups, §10.5). `spirit`/`reservation` surface the §10.5
+ * "reservation과 spirit cost를 즉시 표시" values; active vs support gems split.
+ */
+const skillGroupCardSchema = {
+  type: 'object',
+  required: ['groupId', 'label', 'enabled', 'spirit', 'reservation', 'activeGems', 'supportGems'],
+  properties: {
+    groupId: { type: 'string' },
+    label: { type: 'string' },
+    enabled: { type: 'boolean' },
+    spirit: { type: 'number' },
+    reservation: { type: 'number' },
+    activeGems: { type: 'array', items: skillGemRefSchema },
+    supportGems: { type: 'array', items: skillGemRefSchema },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+/**
+ * ConfigOptionCard — one config option serialized for the Config tab (DESIGN
+ * §6.3 config.getOptions, §10.8). `value` is intentionally unconstrained (a
+ * check is boolean, a list/count is string/number); `dependentModifiers` lists
+ * the mods the option's `apply` wires up (DESIGN §10.8).
+ */
+const configOptionCardSchema = {
+  type: 'object',
+  required: ['optionId', 'type', 'label', 'value', 'dependentModifiers'],
+  properties: {
+    optionId: { type: 'string' },
+    type: { type: 'string' },
+    label: { type: 'string' },
+    value: {},
+    dependentModifiers: { type: 'array', items: { type: 'string' } },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+/** Origin kinds of a calc.explain contribution (DESIGN §10.7 source list). */
+const explainSourceKinds = ['item', 'passive', 'skillGem', 'supportGem', 'config', 'buff'] as const;
+
+/**
+ * ExplainSource — one contribution to a stat's final value (DESIGN §10.7 "기여
+ * source list"). `kind` classifies the origin; `value` is the signed amount.
+ */
+const explainSourceSchema = {
+  type: 'object',
+  required: ['kind', 'label', 'value'],
+  properties: {
+    kind: { type: 'string', enum: explainSourceKinds },
+    label: { type: 'string' },
+    value: { type: 'number' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
 // ----------------------------------------------------------------------------
 // CoreError envelope (DESIGN §6.4)
 // ----------------------------------------------------------------------------
@@ -427,6 +501,97 @@ const itemsCompareResponseSchema = {
 } as const satisfies JSONSchema;
 
 // ----------------------------------------------------------------------------
+// skills.getGroups
+// ----------------------------------------------------------------------------
+
+const skillsGetGroupsRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:skills.getGroups:request',
+  title: 'SkillsGetGroupsRequest',
+  type: 'object',
+  required: ['buildId'],
+  properties: {
+    buildId: { type: 'string' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const skillsGetGroupsResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:skills.getGroups:response',
+  title: 'SkillsGetGroupsResponse',
+  type: 'object',
+  required: ['groups'],
+  properties: {
+    groups: { type: 'array', items: skillGroupCardSchema },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
+// config.getOptions
+// ----------------------------------------------------------------------------
+
+const configGetOptionsRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:config.getOptions:request',
+  title: 'ConfigGetOptionsRequest',
+  type: 'object',
+  required: ['buildId'],
+  properties: {
+    buildId: { type: 'string' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const configGetOptionsResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:config.getOptions:response',
+  title: 'ConfigGetOptionsResponse',
+  type: 'object',
+  required: ['options'],
+  properties: {
+    options: { type: 'array', items: configOptionCardSchema },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
+// calc.explain
+// ----------------------------------------------------------------------------
+
+const calcExplainRequestSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:calc.explain:request',
+  title: 'CalcExplainRequest',
+  type: 'object',
+  required: ['buildId', 'statId'],
+  properties: {
+    buildId: { type: 'string' },
+    statId: { type: 'string' },
+    activeSkillId: { type: 'string' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+const calcExplainResponseSchema = {
+  $schema: DRAFT,
+  $id: 'pob2:calc.explain:response',
+  title: 'CalcExplainResponse',
+  type: 'object',
+  required: ['statId', 'finalValue', 'label', 'sources', 'formula', 'upstreamStatId'],
+  properties: {
+    statId: { type: 'string' },
+    finalValue: { type: 'number' },
+    label: { type: 'string' },
+    sources: { type: 'array', items: explainSourceSchema },
+    formula: { type: 'string' },
+    upstreamStatId: { type: 'string' },
+  },
+  additionalProperties: false,
+} as const satisfies JSONSchema;
+
+// ----------------------------------------------------------------------------
 // Registry — the shared source of truth (method → request/response schema)
 // ----------------------------------------------------------------------------
 
@@ -437,16 +602,20 @@ export interface SchemaEntry {
 
 /**
  * The MVP methods named in `tools/dev-workflow/phases.mjs`, plus the items.*
- * expansion (DESIGN §6.3 items.getEquipped/createCustom/compare).
+ * expansion (DESIGN §6.3 items.getEquipped/createCustom/compare) and the Phase 4
+ * read methods (DESIGN §6.3 skills.getGroups/config.getOptions/calc.explain).
  */
 export const MVP_METHODS = [
   'build.load',
   'build.save',
   'calc.run',
+  'calc.explain',
   'items.parseClipboard',
   'items.getEquipped',
   'items.createCustom',
   'items.compare',
+  'skills.getGroups',
+  'config.getOptions',
 ] as const satisfies readonly MvpMethod[];
 
 /**
@@ -468,6 +637,10 @@ export const schemaRegistry: Record<MvpMethod, SchemaEntry> = {
     requestSchema: calcRunRequestSchema,
     responseSchema: calcRunResponseSchema,
   },
+  'calc.explain': {
+    requestSchema: calcExplainRequestSchema,
+    responseSchema: calcExplainResponseSchema,
+  },
   'items.parseClipboard': {
     requestSchema: itemsParseClipboardRequestSchema,
     responseSchema: itemsParseClipboardResponseSchema,
@@ -483,5 +656,13 @@ export const schemaRegistry: Record<MvpMethod, SchemaEntry> = {
   'items.compare': {
     requestSchema: itemsCompareRequestSchema,
     responseSchema: itemsCompareResponseSchema,
+  },
+  'skills.getGroups': {
+    requestSchema: skillsGetGroupsRequestSchema,
+    responseSchema: skillsGetGroupsResponseSchema,
+  },
+  'config.getOptions': {
+    requestSchema: configGetOptionsRequestSchema,
+    responseSchema: configGetOptionsResponseSchema,
   },
 };

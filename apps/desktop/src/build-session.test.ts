@@ -26,7 +26,15 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { buildOverviewModel } from '@pob2/ui';
-import type { CalcRunResponse, EquippedItem, ItemsParseClipboardResponse } from '@pob2/schema';
+import type {
+  CalcExplainResponse,
+  CalcRunResponse,
+  ConfigGetOptionsResponse,
+  EquippedItem,
+  GemInput,
+  ItemsParseClipboardResponse,
+  SkillsGetGroupsResponse,
+} from '@pob2/schema';
 import { createBuildSession, type BuildClient } from './build-session.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -69,15 +77,75 @@ const SAMPLE_PARSE: ItemsParseClipboardResponse = {
   unsupported: ['Mirror something the parser cannot read'],
 };
 
+/** The sample build's one socket group a skills.getGroups pass returns (§10.5). */
+const SAMPLE_GROUPS: SkillsGetGroupsResponse = {
+  groups: [
+    {
+      groupId: '1',
+      label: 'Mace Strike',
+      enabled: true,
+      spirit: 0,
+      reservation: 0,
+      activeGems: [
+        { gemId: 'SkillGemMaceStrike', name: 'Mace Strike', level: 1, quality: 0, enabled: true },
+      ],
+      supportGems: [],
+    },
+  ],
+};
+
+/** The build's config-option cards a config.getOptions pass returns (§10.8). */
+const SAMPLE_OPTIONS: ConfigGetOptionsResponse = {
+  options: [
+    {
+      optionId: 'enemyIsBoss',
+      type: 'list',
+      label: 'Enemy is a Boss',
+      value: 'Pinnacle',
+      dependentModifiers: ['EnemyModifier'],
+    },
+  ],
+};
+
+/** The calc.explain formula trace a stat-explain pass returns for Life (§10.7). */
+const SAMPLE_EXPLAIN: CalcExplainResponse = {
+  statId: 'Life',
+  finalValue: 65,
+  label: 'Life',
+  sources: [],
+  formula: '62 base x 1.05',
+  upstreamStatId: 'Life',
+};
+
+/** The recalculated stats a calc.run AFTER a build mutation returns (§6.3 recalc). */
+const RECALC_STATS: CalcRunResponse = {
+  buildId: 'build-1',
+  stats: [
+    { statId: 'TotalDPS', value: 9999.9, label: 'Total DPS' },
+    { statId: 'Life', value: 50, label: 'Life' },
+    { statId: 'Mana', value: 40, label: 'Mana' },
+  ],
+};
+
+/** A gem swap input a setGemGroup pass writes (§6.3 skills.setGemGroup). */
+const SWAP_GEMS: GemInput[] = [
+  { gemId: 'SkillGemBoneshatter', level: 20, quality: 0, enabled: true },
+];
+
 /**
  * A recording mock CoreClient: structurally a {@link BuildClient}, returns canned
  * @pob2/core-client shapes and logs every call so the wiring can be asserted. No
  * Lua runner is spawned (DESIGN §5.1 injectable client).
+ *
+ * `calcRun` returns SAMPLE_STATS the first time and RECALC_STATS on every later
+ * call, so a "mutate then recalc" flow (setGemGroup/setConfigOption) can be proven
+ * to surface the FRESH calc.run output, not a stale snapshot.
  */
 function mockClient(): BuildClient & {
   calls: Array<{ method: string; arg: unknown }>;
 } {
   const calls: Array<{ method: string; arg: unknown }> = [];
+  let calcRuns = 0;
   return {
     calls,
     async load(xml: string) {
@@ -90,7 +158,9 @@ function mockClient(): BuildClient & {
     },
     async calcRun(buildId: string) {
       calls.push({ method: 'calcRun', arg: buildId });
-      return SAMPLE_STATS;
+      // First run returns the load-time stats; every later run returns the
+      // post-mutation stats so a recalc surfaces fresh output, not a snapshot.
+      return calcRuns++ === 0 ? SAMPLE_STATS : RECALC_STATS;
     },
     async save(buildId: string) {
       calls.push({ method: 'save', arg: buildId });
@@ -115,6 +185,26 @@ function mockClient(): BuildClient & {
     async equipDelta(buildId: string, item, slot) {
       calls.push({ method: 'equipDelta', arg: { buildId, itemId: item.itemId, slot } });
       return { slot, deltas: [] };
+    },
+    async getSkillGroups(buildId: string) {
+      calls.push({ method: 'getSkillGroups', arg: buildId });
+      return SAMPLE_GROUPS;
+    },
+    async setGemGroup(buildId: string, groupId: string, gems) {
+      calls.push({ method: 'setGemGroup', arg: { buildId, groupId, gems } });
+      return { groupId };
+    },
+    async getConfigOptions(buildId: string) {
+      calls.push({ method: 'getConfigOptions', arg: buildId });
+      return SAMPLE_OPTIONS;
+    },
+    async setConfigOption(buildId: string, optionId: string, value) {
+      calls.push({ method: 'setConfigOption', arg: { buildId, optionId, value } });
+      return { optionId };
+    },
+    async explainStat(buildId: string, statId: string, activeSkillId?) {
+      calls.push({ method: 'explainStat', arg: { buildId, statId, activeSkillId } });
+      return SAMPLE_EXPLAIN;
     },
   };
 }
@@ -246,5 +336,142 @@ describe('build-session — Items tab paths (DESIGN §10.4, §6.3)', () => {
     expect(item.unsupportedMods).toEqual(['Mirror something the parser cannot read']);
     // The detected source locale is surfaced for the §8.6 import indicator.
     expect(locale).toBe('en-US');
+  });
+});
+
+describe('build-session — Skills/Config/Calcs read paths (DESIGN §6.3, §10.5/§10.7/§10.8)', () => {
+  it('getSkillGroups() routes to client.getSkillGroups with the open buildId', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await session.open({ xml: sampleXml });
+    const groups = await session.getSkillGroups();
+
+    // Returns the build's real socket groups, routed with the open build id.
+    expect(groups).toBe(SAMPLE_GROUPS);
+    expect(client.calls.at(-1)).toEqual({ method: 'getSkillGroups', arg: 'build-1' });
+  });
+
+  it('rejects getSkillGroups() before a build is opened (no buildId to query)', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await expect(session.getSkillGroups()).rejects.toThrow();
+    // Nothing was sent to the client (NO-FALLBACK — no fabricated empty group list).
+    expect(client.calls).toEqual([]);
+  });
+
+  it('getConfigOptions() routes to client.getConfigOptions with the open buildId', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await session.open({ xml: sampleXml });
+    const options = await session.getConfigOptions();
+
+    expect(options).toBe(SAMPLE_OPTIONS);
+    expect(client.calls.at(-1)).toEqual({ method: 'getConfigOptions', arg: 'build-1' });
+  });
+
+  it('rejects getConfigOptions() before a build is opened (no buildId to query)', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await expect(session.getConfigOptions()).rejects.toThrow();
+    expect(client.calls).toEqual([]);
+  });
+
+  it('explainStat() routes to client.explainStat with the open buildId, statId and skill', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await session.open({ xml: sampleXml });
+    const explain = await session.explainStat('Life', 'skill-1');
+
+    expect(explain).toBe(SAMPLE_EXPLAIN);
+    expect(client.calls.at(-1)).toEqual({
+      method: 'explainStat',
+      arg: { buildId: 'build-1', statId: 'Life', activeSkillId: 'skill-1' },
+    });
+  });
+
+  it('explainStat() passes an undefined active skill straight through (optional arg)', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await session.open({ xml: sampleXml });
+    await session.explainStat('Life');
+
+    expect(client.calls.at(-1)).toEqual({
+      method: 'explainStat',
+      arg: { buildId: 'build-1', statId: 'Life', activeSkillId: undefined },
+    });
+  });
+
+  it('rejects explainStat() before a build is opened (no buildId to query)', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await expect(session.explainStat('Life')).rejects.toThrow();
+    expect(client.calls).toEqual([]);
+  });
+});
+
+describe('build-session — mutate then recalc (DESIGN §6.3 빌드 수정 → 즉시 재계산)', () => {
+  it('setGemGroup() writes the group then re-runs calc.run, returning the FRESH stats', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    const opened = await session.open({ xml: sampleXml });
+    // The load-time calc.run yields the baseline stats.
+    expect(opened.stats).toBe(SAMPLE_STATS);
+
+    const stats = await session.setGemGroup('1', SWAP_GEMS);
+
+    // The write is routed, then a fresh calc.run re-runs on the open build id.
+    expect(client.calls).toEqual([
+      { method: 'load', arg: sampleXml },
+      { method: 'calcRun', arg: 'build-1' },
+      { method: 'setGemGroup', arg: { buildId: 'build-1', groupId: '1', gems: SWAP_GEMS } },
+      { method: 'calcRun', arg: 'build-1' },
+    ]);
+    // The returned stats are the RECALCULATED ones, not the stale snapshot.
+    expect(stats).toBe(RECALC_STATS);
+    expect(stats.stats.find((s) => s.statId === 'TotalDPS')?.value).toBe(9999.9);
+  });
+
+  it('setConfigOption() writes the option then re-runs calc.run, returning the FRESH stats', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await session.open({ xml: sampleXml });
+    const stats = await session.setConfigOption('enemyIsBoss', 'None');
+
+    expect(client.calls).toEqual([
+      { method: 'load', arg: sampleXml },
+      { method: 'calcRun', arg: 'build-1' },
+      {
+        method: 'setConfigOption',
+        arg: { buildId: 'build-1', optionId: 'enemyIsBoss', value: 'None' },
+      },
+      { method: 'calcRun', arg: 'build-1' },
+    ]);
+    expect(stats).toBe(RECALC_STATS);
+  });
+
+  it('rejects setGemGroup() before a build is opened (no buildId — no write, no recalc)', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await expect(session.setGemGroup('1', SWAP_GEMS)).rejects.toThrow();
+    // NO-FALLBACK: nothing was written and no calc.run was triggered.
+    expect(client.calls).toEqual([]);
+  });
+
+  it('rejects setConfigOption() before a build is opened (no buildId — no write, no recalc)', async () => {
+    const client = mockClient();
+    const session = createBuildSession(client);
+
+    await expect(session.setConfigOption('enemyIsBoss', 'None')).rejects.toThrow();
+    expect(client.calls).toEqual([]);
   });
 });

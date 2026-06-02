@@ -42,6 +42,11 @@ coverage/
 .localization-cache/
 *.local
 
+# Visual-verify transient output: --check screenshots + harness workdir
+# (visual-verify.mjs builds these for the spec §6 vision step, then cleans up).
+tmp-visual/
+**/.visual-harness-*/
+
 # Lua coverage
 luacov.stats.out
 luacov.report.out

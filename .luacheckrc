@@ -14,6 +14,9 @@ globals = {
   "build",
   "newBuild",
   "loadBuildFromXML",
+  -- the HeadlessWrapper frame pump (modern_api drives runCallback("OnFrame") to
+  -- recompute mainOutput after a real build mutation, e.g. skills.setGemGroup).
+  "runCallback",
   -- core class constructor + the launch singleton (modern_api drives new("Item", ...)
   -- and reads launch.promptMsg to detect a rejected build load).
   "new",

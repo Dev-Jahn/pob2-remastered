@@ -13,7 +13,9 @@
 - Phase 1: ✓ done — squash-merged to `main` (8fb171e), pushed
 - Phase 2: ✓ done — squash-merged to `main` (c2e43b9), pushed
 - Phase 3: ✓ done — squash-merged to `main` (6800500), pushed; **core-bridge CARRYOVER resolved** (app runs core over Tauri IPC); equip-delta fake-feature caught+fixed by review
-- Current phase: **4** (Skills/Config/Calcs) — in progress on `feat/phase-4-skills-config-calcs`
+- Phase 4: ✓ done (gate-green sign-off) on `feat/phase-4-skills-config-calcs` — `run-gate 4` green
+  (5/5 required, exit 0), `gates.mjs`/`phases.mjs` unmodified; awaiting squash-merge to `main`
+- Current phase: **5** (Passive Tree) — pending
 - Env: Rust toolchain provisioned (cargo 1.96, user-space `~/.cargo`, reachable in login shell);
   `webkit2gtk-4.1` dev libs already present → Tauri buildable; Playwright chromium present → visual gates live
 - TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in
@@ -23,16 +25,16 @@
 
 ## Phase ledger
 
-| Phase | Status      | Gate evidence                                                             | 🚩Flags | Blockers |
-| ----- | ----------- | ------------------------------------------------------------------------- | ------- | -------- |
-| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
-| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
-| 2     | done        | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
-| 3     | done        | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
-| 4     | in progress |                                                                           |         |          |
-| 5     | pending     |                                                                           |         |          |
-| 6     | pending     |                                                                           |         |          |
-| 7     | pending     |                                                                           |         |          |
+| Phase | Status  | Gate evidence                                                             | 🚩Flags | Blockers |
+| ----- | ------- | ------------------------------------------------------------------------- | ------- | -------- |
+| 0     | done    | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
+| 1     | done    | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
+| 2     | done    | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
+| 3     | done    | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
+| 4     | done    | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below | 1       |          |
+| 5     | pending |                                                                           |         |          |
+| 6     | pending |                                                                           |         |          |
+| 7     | pending |                                                                           |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -197,6 +199,102 @@ vision** — both §10.4 `VISUAL[3]` asserts hold (3-region layout; rarity color
 red-loss +DPS/-EHP chips). Same env limit recorded as `p2/gemini-vision-unavailable`; configure
 antigravity OAuth for the "precise" verifier — not required for the gate.
 
+## Phase 4 gate evidence (task `p4-gate-green`)
+
+Phase 4 (Skills / Config / Calcs — 계산 조작 + 설명 UI) freeze. Ran the full Phase 4 gate set with
+`node tools/dev-workflow/run-gate.mjs 4`. Overall `pass: true`, process **exit 0**; all 5 required
+gates exit 0. `gates.mjs`/`phases.mjs` were consumed **exactly as defined — not edited**
+(`git diff --quiet tools/dev-workflow/gates.mjs tools/dev-workflow/phases.mjs` → `GATES_UNMODIFIED`).
+The only working-tree change to reach green was on pre-existing Phase 4 files: a Prettier reformat of
+five files (`packages/ui/src/calcs/calcs-model.ts`, `packages/ui/src/skills/skills-model.ts`,
+`packages/ui/test/{calcs-vm,config-vm,skills-vm}.test.ts` — pure line-wrapping, no logic/assertion
+change) and the removal of four genuinely-unused type imports the `lint` gate flagged
+(`ConfigOptionInput`/`ConfigPreset` in `config-vm.test.ts`, `SkillGroupCardModel`/`SkillGemChip` in
+`skills-vm.test.ts` — each appeared only on its import line; the type imports that ARE used were kept).
+All 244 `@pob2/ui` tests still pass, so no behavior changed.
+
+| Gate                 | required | status | exit | what it proves (this run)                                                         |
+| -------------------- | -------- | ------ | ---- | --------------------------------------------------------------------------------- |
+| `format`             | true     | pass   | 0    | `pnpm -w format:check` → `All matched files use Prettier code style!`             |
+| `lint`               | true     | pass   | 0    | `pnpm -w lint` (eslint .) → no errors                                             |
+| `typecheck`          | true     | pass   | 0    | `pnpm -w typecheck` (`tsc -b`) compiles `@pob2/schema` + `@pob2/core-client`      |
+| `dev-workflow-tests` | true     | pass   | 0    | `@pob2/dev-workflow` — 47 tests / 13 files (JS guards + pipeline + Phase 4 guard) |
+| `calc-mutation`      | true     | pass   | 0    | `@pob2/ui test calcs` — 51 tests / 3 files (calcs view-model + mutation→delta)    |
+
+These map to the Phase 4 **doneCriteria** (phases.mjs / DESIGN §18, §10.5/§10.7/§10.8) — the sign-off
+rests on this doneCriteria → evidence mapping:
+
+- `주요 빌드 수정 flow가 기존 PoB 없이 가능` — the `calc-mutation` gate proves the build-mutation
+  flow runs WITHOUT legacy PoB, **end to end**: a skill edit builds a real §6.3 `skills.setGemGroup`
+  payload via the shipped `toggleGemEnabled`/`groupToGemInputs` builders, and a config edit builds a
+  real `config.setOption` payload via `setOptionValue` (a real `false`/`0` preserved, never coerced);
+  the host then re-runs `calc.run` and `buildCalcsModel(nextRun, explains, prevRun)` surfaces every
+  moved stat as a signed `{ before, after, delta }` (a drop is `-`, never `abs()`). The SHIPPED desktop
+  app realizes the same flow on a LIVE Tauri-IPC core session: `apps/desktop/src/build-session.ts`
+  `setGemGroup`/`setConfigOption` write through `skills.setGemGroup`/`config.setOption` and RE-RUN
+  `calc.run`, and `apps/desktop/src/App.tsx` refreshes Overview/Calcs from the recomputed stats
+  (`setConfigOption → recompute → Overview/Calcs refresh`). NO-FALLBACK: a stat with no prior run gets
+  no fabricated `0` baseline, and a disappearing stat is `present:false` missing, not `0`.
+- `Calcs tab에서 결과 추적(formula trace) 가능` — the `calc-mutation` gate's recompute carries the
+  NEW `calc.explain` trace per expanded stat: a `formula` string, the classified contribution
+  `sources` list (skillGem/supportGem/item/passive/config/buff), and the upstream raw stat id
+  (`upstreamStatId`); after a config flip the trace is the recomputed one (the shock `config` source is
+  gone, sources become `['item','skillGem']`), not the stale prior trace. A moved stat whose explain was
+  not re-fetched keeps the explicit `trace 없음` (`reason: 'noTrace'`) marker, never a fabricated trace.
+  The shipped Calcs tab dispatches this lazily: `apps/desktop/src/App.tsx` `explainStat` routes
+  `calc.explain` through the session as a stat row is expanded (DESIGN §10.7), feeding `CalcsPanel`.
+
+Recorded exit codes (from this `run-gate 4` invocation): the process exit code is **0** (`run-gate.mjs`
+exits `0` iff no required gate `fail`ed), and each gate's `evidence` line begins `exit=0`. The
+`p4-gate-green` sign-off is guarded by `test/progress-phase4.test.mjs`, which derives the required gate
+names straight from `gates.mjs` (and asserts `calc-mutation` is among them), asserts this row reads
+`done` with `exit=0` evidence, and pins the doneCriteria → evidence mapping (`setGemGroup` /
+`setConfigOption` / `calc.explain`) plus the `gates.mjs`+`phases.mjs`-unmodified note — so the recorded
+sign-off cannot silently regress and the guard cannot drift from the gate set.
+
+### `/calcs` VISUAL screen (gates.mjs `VISUAL[4]`) — 🚩 best-effort visual verify (task `p4-visual-calcs`)
+
+The §10.7 `/calcs` screen was verified via the spec §6 path: **build → serve → Playwright screenshot →
+vision** (`humanGate: visual` → best-effort + FLAG per spec §2/§6, NOT deferred to a human gate). The
+production `/calcs` route drives `CalcsPanel` from a LIVE Tauri-IPC core session (`calc.run` + lazy
+`calc.explain`), which a static serve has no runner for — so a SAFE **fixture harness** (spec §2:
+fixtures, not live network) mounts the REAL `@pob2/ui` `AppShell` + `CalcsPanel` (built through the
+desktop app's vite/react, `@pob2/ui/styles.css` bundled) with §10.7 representative data: a `calc.run`
+with stats across all four sections plus a prior run for before/after deltas, and `calc.explain` traces
+carrying a classified contribution `sources` list (skillGem/supportGem/item/passive/config/buff) + a
+`formula` trace string + the upstream raw stat id, fed through the SHIPPED `buildCalcsModel`. The harness
+pre-expands the Summary `TotalDPS`/`TotalEHP` rows (collapsed by default) so the source list + formula
+trace are visible, then screenshots at 1366×768 and 1366×1100 via
+`node tools/dev-workflow/visual-verify.mjs --route /calcs --check` (Playwright chromium). The transient
+harness + dist are removed after capture, `tmp-visual/` + `**/.visual-harness-*/` are gitignored, and
+the only tracked changes are `visual-verify.mjs` + its test + `.gitignore` (working tree clean). The
+`VISUAL[4].assert` fact verified:
+
+1. **Calcs breakdown tree: Summary/Offence/Defence/Resource with source list + formula trace (§10.7)** —
+   PASS. `계산 (Calcs)` title; collapsible breakdown sections `요약 (Summary)` / `공격 (Offence)`
+   (groups `타격 피해 (Hit Damage)` Total DPS·Average Damage, `치명타 (Crit)` Critical Hit Chance 71
+   (+3)·Critical Damage Bonus 370 (+20), `상태이상 (Ailments)` Ignite DPS 21000 (+3000), `지속 피해
+(DoT)`) / `방어 (Defence)` / `자원 (Resource)`, in model order; per-row before/after delta chips
+   (`+25000`, `+800`, …). Each expanded stat shows its `기여도 (Contributions)` source list with the
+   classified origin + signed value (`skillGem Lightning Arrow +60000`, `item Doryani Catalyst +22000`,
+   `passive Heart of Thunder +10000`, `config Shock +5000`, `buff Determination +6000`), a
+   `공식 (Formula)` trace string (`baseHit 8200 × critMult 1.45 × hitRate 10.5 = 125000`), and the
+   `원본 스탯 ID (Upstream Stat Id)` (`Output.TotalDPS` / `Output.TotalEHP`). 3-pane shell + left nav
+   rail (Calcs highlighted) + 한국어/영어 toggle (Korean selected); Korean labels carry English aliases
+   throughout (§8.1).
+
+🚩 **p4/gemini-vision-unavailable** (Phase 4, visual verifier) — gemini-vision OAuth is still not
+configured in this env (the script's accounts search at `~/.config/opencode/antigravity-accounts.json`
+and `~/.config/antigravity_auth/accounts.json` returns a `config` error / no antigravity dir), so the
+engine could not LLM-attest the screenshot. Resolved per spec §6.1 fallback: the driver verified
+`tmp-visual/pob-calcs-1366x768.png` + `…-1366x1100.png` by **direct Claude vision** — the §10.7
+`VISUAL[4]` assert holds (Summary/Offence/Defence/Resource breakdown tree with the contribution source
+list + formula trace + upstream stat id, ko/en labels). Same env limit recorded as
+`p2`/`p3/gemini-vision-unavailable`; configure antigravity OAuth for the "precise" verifier — not
+required for the gate. The `--check` path still asserts the painted DOM carries every assert fact
+deterministically (the four sections + `data-source-kind` + `data-formula`) so a blank/stub harness
+cannot false-pass before the vision read.
+
 ### CARRYOVER→Phase 3 blocker — RESOLVED
 
 The Phase 2 review's **CARRYOVER→Phase 3 — core bridge over Tauri IPC** blocker (the shipped app could
@@ -213,6 +311,36 @@ stages it in the Items inspector, and switches to the Items tab (`apps/desktop/s
 ## 🚩 Flag log
 
 _(human-gate decisions made autonomously — review later)_
+
+- **p4-gate-green carryover/ledger (Phase 4 sign-off)** — At the Phase 4 freeze (`run-gate 4` green,
+  5/5 required at exit 0, `gates.mjs`+`phases.mjs` unmodified) the open flags below are **carried
+  forward**, not closed:
+  - 🚩 **p4/gemini-vision-unavailable** (visual verifier, STILL-OPEN) — still unresolved: antigravity
+    OAuth is not configured in this env, so the `/calcs` `VISUAL[4]` screen was attested by direct
+    Claude vision (spec §6.1 fallback), not the "precise" LLM verifier. Not required for the gate;
+    configure antigravity OAuth to close. Same env limit as `p2`/`p3/gemini-vision-unavailable`.
+  - 🚩 **p1/build-load-response-schema — BuildState gap** (CARRIED) — `build.load`'s response schema
+    REQUIRES a full BuildState but the runner returns its plain `summary` (`validateResponse:false`).
+    Phase 4 added skills/config/calc.explain on top of the same session without closing this gap; the
+    real BuildState assembly is still owed (request side stays validated, no silent fallback).
+  - 🚩 **CARRYOVER (Import/Export) — WebView share-code codec** (CARRIED) — the desktop WebView
+    `loadShareCode`/`saveShareCode` path still needs a browser-safe deflate; wire when the desktop
+    Import/Export flow lands (the 4+ live IPC core methods Phase 4 drives do not use it).
+  - 🚩 **p3-client-items/runner-gaps — `items.createCustom`** (CARRIED) — the runner still does not
+    implement `items.createCustom`; a well-formed request surfaces a structured `UPSTREAM_INCOMPATIBLE`
+    (`-32601`) instead of a fabricated card. Resolve when a `p3-lua-createCustom` runner task lands.
+
+- **p4/gemini-vision-unavailable** (Phase 4, `p4-visual-calcs`, visual verifier) — gemini-vision OAuth
+  is not configured in this env (no antigravity accounts file; the skill script returns a `config`
+  error), so the engine could not LLM-attest the `/calcs` screenshots. Resolved per spec §6.1 fallback:
+  the `--route /calcs --check` path builds a fixture harness mounting the REAL `@pob2/ui` `CalcsPanel`
+  with §10.7 representative data, serves it, screenshots 1366×768/1366×1100, and the driver verified
+  them by **direct Claude vision** — the §10.7 `VISUAL[4]` assert holds (Summary/Offence/Defence/Resource
+  breakdown tree + contribution source list + formula trace + upstream stat id, ko/en labels). The check
+  also deterministically asserts the painted DOM carries every assert fact (four sections +
+  `data-source-kind` + `data-formula`) so a blank/stub harness cannot false-pass. Same env limit as
+  `p2`/`p3/gemini-vision-unavailable`; configure antigravity OAuth for the precise verifier — not
+  required for the gate.
 
 - **CARRYOVER (Import/Export) — WebView share-code codec** (Phase 3, `p3-core-bridge`) — The desktop
   WebView `loadShareCode`/`saveShareCode` path needs a browser-safe deflate (Web `CompressionStream`

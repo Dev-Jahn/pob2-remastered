@@ -17,7 +17,7 @@
 //! [`core_bridge`]); a runner crash / malformed input becomes a CoreError, never
 //! a host crash.
 
-mod core_bridge;
+pub mod core_bridge;
 
 use std::path::{Component, Path};
 use std::sync::Mutex;

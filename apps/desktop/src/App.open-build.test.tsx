@@ -57,6 +57,26 @@ function fakeSession(): BuildSession & { opened: OpenSource[]; saved: SaveFormat
     async parseClipboard() {
       throw new Error('parseClipboard not used in the open-build suite');
     },
+    // The Skills/Config session surface (DESIGN §6.3): opening a build now
+    // populates every tab, so getSkillGroups/getConfigOptions are driven by open()
+    // and yield empty results here (no fabricated cards/options — NO-FALLBACK §6.4),
+    // since this Overview-focused suite asserts only the Overview. The mutation /
+    // explain methods stay unexercised and error if accidentally driven.
+    async getSkillGroups() {
+      return { groups: [] };
+    },
+    async setGemGroup() {
+      throw new Error('setGemGroup not used in the open-build suite');
+    },
+    async getConfigOptions() {
+      return { options: [] };
+    },
+    async setConfigOption() {
+      throw new Error('setConfigOption not used in the open-build suite');
+    },
+    async explainStat() {
+      throw new Error('explainStat not used in the open-build suite');
+    },
   };
 }
 

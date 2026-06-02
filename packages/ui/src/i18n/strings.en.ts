@@ -117,4 +117,86 @@ export const stringsEn = {
   'items.custom.base': 'Base Item',
   'items.custom.mods': 'Modifiers, one per line',
   'items.custom.create': 'Create',
+
+  // Skills tab redesign (DESIGN §10.5). The 2-region layout headings: the
+  // skill-group card list and the main-skill inspector.
+  'skills.title': 'Skills',
+  'skills.groups': 'Skill Groups',
+  'skills.inspector': 'Inspector',
+
+  // Skill-group card: the group enabled toggle and the immediate reservation /
+  // spirit cost (DESIGN §10.5 "reservation과 spirit cost를 즉시 표시").
+  'skills.group.enabled': 'Enabled',
+  'skills.reservation': 'Reservation',
+  'skills.spirit': 'Spirit',
+  'skills.gem.enabled': 'Gem Enabled',
+  'skills.gem.level': 'Level',
+  'skills.gem.quality': 'Quality',
+
+  // Gem category chips (DESIGN §10.5 "active/support/buff/aura/minion 구분 chip").
+  // An active gem with no category metadata reads `unsupported` (§6.4, §11.3).
+  'skills.category.active': 'Active',
+  'skills.category.support': 'Support',
+  'skills.category.buff': 'Buff',
+  'skills.category.aura': 'Aura',
+  'skills.category.minion': 'Minion',
+  'skills.category.unsupported': 'Unsupported',
+
+  // Main-skill inspector sections (DESIGN §10.5 inspector: damage breakdown,
+  // support gem contribution, gem level/quality delta).
+  'skills.inspector.empty': 'Select a skill group to inspect',
+  'skills.inspector.damageBreakdown': 'Damage Breakdown',
+  'skills.inspector.supportContribution': 'Support Gem Contribution',
+  'skills.inspector.gemDelta': 'Gem Level / Quality Delta',
+
+  // Config tab redesign (DESIGN §10.8). The 2-region layout headings: the
+  // scenario-preset selector and the typed option list.
+  'config.title': 'Config',
+  'config.presets': 'Scenario Presets',
+  'config.options': 'Options',
+
+  // The §10.8 scenario presets (general mapping / bossing / full charges /
+  // shocked enemy / cursed enemy / low life / custom scenario).
+  'config.preset.generalMapping': 'General Mapping',
+  'config.preset.bossing': 'Bossing',
+  'config.preset.fullCharges': 'Full Charges',
+  'config.preset.shockedEnemy': 'Shocked Enemy',
+  'config.preset.cursedEnemy': 'Cursed Enemy',
+  'config.preset.lowLife': 'Low Life',
+  'config.preset.custom': 'Custom Scenario',
+
+  // Config option row: the affected-calc-items label (DESIGN §10.8 "변경 시 영향을
+  // 받는 계산 항목"), and the unsupported-control marker (§6.4, §11.3).
+  'config.affects': 'Affects',
+  'config.unsupported': 'Unsupported',
+
+  // Calcs tab breakdown explorer (DESIGN §10.7). The panel title, the per-stat
+  // delta / final-value chrome, and the formula-trace labels (source list /
+  // formula / upstream raw stat id), plus the "trace 없음" + missing markers.
+  'calcs.title': 'Calcs',
+  'calcs.finalValue': 'Final Value',
+  'calcs.delta': 'Delta',
+  'calcs.missing': 'Not computed',
+  'calcs.noTrace': 'No trace',
+  'calcs.sources': 'Contributions',
+  'calcs.formula': 'Formula',
+  'calcs.upstreamStatId': 'Upstream Stat Id',
+
+  // Top-level breakdown section names (DESIGN §10.7 tree: Summary / Offence /
+  // Defence / Resource / Raw trace). The labels of the §10.7 breakdown spec.
+  'calcs.section.summary': 'Summary',
+  'calcs.section.offence': 'Offence',
+  'calcs.section.defence': 'Defence',
+  'calcs.section.resource': 'Resource',
+  'calcs.section.rawTrace': 'Raw Trace',
+
+  // Contribution source-kind labels (DESIGN §10.7 "기여 source list" classified by
+  // origin — the ExplainSource.kind union: item/passive/skillGem/supportGem/
+  // config/buff). The trace renders these next to each source's label and value.
+  'calcs.source.item': 'Item',
+  'calcs.source.passive': 'Passive',
+  'calcs.source.skillGem': 'Skill Gem',
+  'calcs.source.supportGem': 'Support Gem',
+  'calcs.source.config': 'Config',
+  'calcs.source.buff': 'Buff',
 } as const;

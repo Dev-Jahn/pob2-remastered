@@ -194,3 +194,272 @@ describe('new items.* methods validate sample payloads (AJV behaviour)', () => {
     expect(validate.errors!.map((e) => e.keyword)).toContain('additionalProperties');
   });
 });
+
+// ---------------------------------------------------------------------------
+// skills.getGroups / config.getOptions / calc.explain expansion (task
+// p4-schema-skills-config-calc, DESIGN §6.3/§6.4, §10.5/§10.7/§10.8).
+//
+// The fixed flat shapes the task pins (NO-FALLBACK: the response schema must
+// match the runner's flat serialization, never an arbitrary BuildState — the
+// p1/build-load-response-schema lesson):
+//
+//   skills.getGroups (socketGroupList based, §10.5):
+//     { groups: SkillGroupCard[] }
+//     SkillGroupCard = { groupId, label, enabled, spirit, reservation,
+//                        activeGems: SkillGemRef[], supportGems: SkillGemRef[] }
+//     SkillGemRef    = { gemId, name, level, quality, enabled }
+//
+//   config.getOptions (ConfigOptions based, §10.8):
+//     { options: ConfigOptionCard[] }
+//     ConfigOptionCard = { optionId, type, label, value, dependentModifiers[] }
+//
+//   calc.explain (§10.7 formula trace model):
+//     { statId, finalValue, label, sources: ExplainSource[], formula,
+//       upstreamStatId }
+//     ExplainSource = { kind: item|passive|skillGem|supportGem|config|buff,
+//                       label, value }
+// ---------------------------------------------------------------------------
+
+const NEW_SCC_METHODS = ['skills.getGroups', 'config.getOptions', 'calc.explain'] as const;
+
+const EXPLAIN_SOURCE_KINDS = [
+  'item',
+  'passive',
+  'skillGem',
+  'supportGem',
+  'config',
+  'buff',
+] as const;
+
+describe('skills/config/calc registry expansion (lockstep)', () => {
+  it('MVP_METHODS now includes the three new skills/config/calc methods', () => {
+    for (const method of NEW_SCC_METHODS) {
+      expect([...MVP_METHODS], `MVP_METHODS contains ${method}`).toContain(method);
+    }
+  });
+
+  it('MVP_METHODS stays in lockstep with the registry keys', () => {
+    expect([...MVP_METHODS].sort()).toEqual(Object.keys(schemaRegistry).sort());
+  });
+
+  it('each new method has request + response schema with a unique $id and a closed object type', () => {
+    const ids = new Set<string>();
+    for (const method of MVP_METHODS) {
+      const { requestSchema, responseSchema } = schemaRegistry[method];
+      for (const schema of [requestSchema, responseSchema]) {
+        expect(typeof schema.$id).toBe('string');
+        expect(ids.has(schema.$id as string), `duplicate $id ${schema.$id}`).toBe(false);
+        ids.add(schema.$id as string);
+      }
+    }
+    for (const method of NEW_SCC_METHODS) {
+      const entry: SchemaEntry = schemaRegistry[method];
+      expect(entry.requestSchema.type).toBe('object');
+      expect(entry.responseSchema.type).toBe('object');
+      expect(entry.requestSchema.additionalProperties, `${method} request closed`).toBe(false);
+      expect(entry.responseSchema.additionalProperties, `${method} response closed`).toBe(false);
+    }
+  });
+
+  it('every registered schema (incl. new methods) compiles under AJV Draft 2020-12', () => {
+    for (const method of MVP_METHODS) {
+      const { requestSchema, responseSchema } = schemaRegistry[method];
+      expect(() => ajv.compile(requestSchema as object), `${method} request`).not.toThrow();
+      expect(() => ajv.compile(responseSchema as object), `${method} response`).not.toThrow();
+    }
+  });
+});
+
+describe('skills.getGroups SkillGroupCard shape is pinned by schema (DESIGN §10.5)', () => {
+  const card = prop(schemaRegistry['skills.getGroups'].responseSchema, 'groups')
+    .items as JSONSchema;
+
+  it('SkillGroupCard requires every fixed field and forbids extras', () => {
+    expect(card.type).toBe('object');
+    expect(card.additionalProperties).toBe(false);
+    expect(card.required).toEqual(
+      expect.arrayContaining([
+        'groupId',
+        'label',
+        'enabled',
+        'spirit',
+        'reservation',
+        'activeGems',
+        'supportGems',
+      ]),
+    );
+  });
+
+  it('enabled is boolean; spirit/reservation are numbers; gem lists are arrays', () => {
+    expect(prop(card, 'enabled').type).toBe('boolean');
+    expect(prop(card, 'spirit').type).toBe('number');
+    expect(prop(card, 'reservation').type).toBe('number');
+    expect(prop(card, 'activeGems').type).toBe('array');
+    expect(prop(card, 'supportGems').type).toBe('array');
+  });
+
+  it('SkillGemRef pins gemId/name/level/quality/enabled and forbids extras', () => {
+    const gem = prop(card, 'activeGems').items as JSONSchema;
+    expect(gem.type).toBe('object');
+    expect(gem.additionalProperties).toBe(false);
+    expect(gem.required).toEqual(
+      expect.arrayContaining(['gemId', 'name', 'level', 'quality', 'enabled']),
+    );
+    expect(prop(gem, 'gemId').type).toBe('string');
+    expect(prop(gem, 'name').type).toBe('string');
+    expect(prop(gem, 'level').type).toBe('number');
+    expect(prop(gem, 'quality').type).toBe('number');
+    expect(prop(gem, 'enabled').type).toBe('boolean');
+  });
+});
+
+describe('config.getOptions ConfigOptionCard shape is pinned by schema (DESIGN §10.8)', () => {
+  const card = prop(schemaRegistry['config.getOptions'].responseSchema, 'options')
+    .items as JSONSchema;
+
+  it('ConfigOptionCard requires every fixed field and forbids extras', () => {
+    expect(card.type).toBe('object');
+    expect(card.additionalProperties).toBe(false);
+    expect(card.required).toEqual(
+      expect.arrayContaining(['optionId', 'type', 'label', 'value', 'dependentModifiers']),
+    );
+  });
+
+  it('optionId/type/label are strings; dependentModifiers is a string array', () => {
+    expect(prop(card, 'optionId').type).toBe('string');
+    expect(prop(card, 'type').type).toBe('string');
+    expect(prop(card, 'label').type).toBe('string');
+    const deps = prop(card, 'dependentModifiers');
+    expect(deps.type).toBe('array');
+    expect((deps.items as JSONSchema).type).toBe('string');
+  });
+});
+
+describe('calc.explain formula-trace shape is pinned by schema (DESIGN §10.7)', () => {
+  const resp = schemaRegistry['calc.explain'].responseSchema;
+
+  it('response requires the §10.7 trace fields and forbids extras', () => {
+    expect(resp.type).toBe('object');
+    expect(resp.additionalProperties).toBe(false);
+    expect(resp.required).toEqual(
+      expect.arrayContaining([
+        'statId',
+        'finalValue',
+        'label',
+        'sources',
+        'formula',
+        'upstreamStatId',
+      ]),
+    );
+    expect(prop(resp, 'statId').type).toBe('string');
+    expect(prop(resp, 'finalValue').type).toBe('number');
+    expect(prop(resp, 'label').type).toBe('string');
+    expect(prop(resp, 'formula').type).toBe('string');
+    expect(prop(resp, 'upstreamStatId').type).toBe('string');
+    expect(prop(resp, 'sources').type).toBe('array');
+  });
+
+  it('ExplainSource pins kind/label/value, kind constrained to the §10.7 enum', () => {
+    const source = prop(resp, 'sources').items as JSONSchema;
+    expect(source.type).toBe('object');
+    expect(source.additionalProperties).toBe(false);
+    expect(source.required).toEqual(expect.arrayContaining(['kind', 'label', 'value']));
+    expect(prop(source, 'kind').enum).toEqual([...EXPLAIN_SOURCE_KINDS]);
+    expect(prop(source, 'label').type).toBe('string');
+    expect(prop(source, 'value').type).toBe('number');
+  });
+
+  it('calc.explain request requires buildId + statId, activeSkillId optional', () => {
+    const req = schemaRegistry['calc.explain'].requestSchema;
+    expect(req.required).toEqual(expect.arrayContaining(['buildId', 'statId']));
+    expect(prop(req, 'buildId').type).toBe('string');
+    expect(prop(req, 'statId').type).toBe('string');
+    expect(prop(req, 'activeSkillId').type).toBe('string');
+    expect(req.additionalProperties).toBe(false);
+  });
+});
+
+describe('new skills/config/calc methods validate sample payloads (AJV behaviour)', () => {
+  const sampleGem = {
+    gemId: 'MeleeMaceMacePlayer',
+    name: 'Mace Strike',
+    level: 1,
+    quality: 0,
+    enabled: true,
+  };
+  const sampleGroup = {
+    groupId: '1',
+    label: 'Mace Strike',
+    enabled: true,
+    spirit: 0,
+    reservation: 0,
+    activeGems: [sampleGem],
+    supportGems: [],
+  };
+  const sampleOption = {
+    optionId: 'enemyIsBoss',
+    type: 'list',
+    label: 'Is the enemy a Boss?',
+    value: 'None',
+    dependentModifiers: ['Multiplier:BossDamage'],
+  };
+  const sampleExplain = {
+    statId: 'TotalDPS',
+    finalValue: 8.16,
+    label: '총 DPS',
+    formula: 'Base 5 * (1 + 0.63 increased)',
+    upstreamStatId: 'TotalDPS',
+    sources: [{ kind: 'skillGem', label: 'Mace Strike', value: 5 }],
+  };
+
+  const valid: Record<string, { request: unknown; response: unknown }> = {
+    'skills.getGroups': {
+      request: { buildId: 'b-1' },
+      response: { groups: [sampleGroup] },
+    },
+    'config.getOptions': {
+      request: { buildId: 'b-1' },
+      response: { options: [sampleOption] },
+    },
+    'calc.explain': {
+      request: { buildId: 'b-1', statId: 'TotalDPS', activeSkillId: 'sk-1' },
+      response: sampleExplain,
+    },
+  };
+
+  for (const method of NEW_SCC_METHODS) {
+    it(`${method} request: valid sample validates`, () => {
+      const validate = ajv.compile(schemaRegistry[method].requestSchema as object);
+      const ok = validate(valid[method]!.request);
+      expect(validate.errors, `${method} request errors`).toBeNull();
+      expect(ok).toBe(true);
+    });
+
+    it(`${method} response: valid sample validates`, () => {
+      const validate = ajv.compile(schemaRegistry[method].responseSchema as object);
+      const ok = validate(valid[method]!.response);
+      expect(validate.errors, `${method} response errors`).toBeNull();
+      expect(ok).toBe(true);
+    });
+  }
+
+  it('calc.explain source with an unknown kind is rejected at the indexed path', () => {
+    const validate = ajv.compile(schemaRegistry['calc.explain'].responseSchema as object);
+    const ok = validate({
+      ...sampleExplain,
+      sources: [{ kind: 'nonsense', label: 'x', value: 1 }],
+    });
+    expect(ok).toBe(false);
+    expect(validate.errors![0]!.instancePath).toBe('/sources/0/kind');
+    expect(validate.errors!.map((e) => e.keyword)).toContain('enum');
+  });
+
+  it('skills.getGroups gem with an extra field is rejected (closed card)', () => {
+    const validate = ajv.compile(schemaRegistry['skills.getGroups'].responseSchema as object);
+    const ok = validate({
+      groups: [{ ...sampleGroup, activeGems: [{ ...sampleGem, bogus: true }] }],
+    });
+    expect(ok).toBe(false);
+    expect(validate.errors!.map((e) => e.keyword)).toContain('additionalProperties');
+  });
+});

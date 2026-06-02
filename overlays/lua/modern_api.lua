@@ -27,6 +27,8 @@ local M = {}
 M.build = {}
 M.calc = {}
 M.items = {}
+M.skills = {}
+M.config = {}
 
 -- CoreError union (DESIGN.md §6.4). Kept as named constants so every error site
 -- references the same canonical code string.
@@ -230,6 +232,190 @@ function M.calc.run(buildId)
 		return err(ERR.CALC_FAILED, "no curated core stats were produced")
 	end
 	return { ok = true, stats = stats }
+end
+
+-- ============================================================================
+-- calc.explain: formula-trace / breakdown extraction (DESIGN §6.4 sourceTrace,
+-- §10.7 Calcs tab breakdown; task p4-explain-lua).
+--
+-- The core's OWN breakdown machine (`calcs.breakdownModule = "Modules/CalcBreakdown"`)
+-- populates `env.player.breakdown[statId]` during the CALCS-mode pass of BuildOutput
+-- (CalcsTab:BuildOutput sets `self.calcsEnv = calcs.buildOutput(build, "CALCS")`). Each
+-- entry is the §10.7 breakdown for one stat, in one of a few shapes:
+--   * its ARRAY part (breakdown[1..#breakdown]) is the formula-trace line list
+--     (multiChain / simple / effMult etc. push display strings into it);
+--   * `.modList` is a pre-built contribution mod list (each { value, mod } the same
+--     shape ModList:Tabulate yields, where mod.source is the source string);
+--   * `.slots` is the per-source slot list defence totals use (armour/evasion/ES),
+--     each { base, total, source, sourceName, ... }.
+-- The breakdown table ALSO carries the breakdown generator FUNCTIONS (multiChain,
+-- effMult, slot, ...) under string keys — those are the machine, not data, so the
+-- serializers below only read the array part + the known data sub-tables.
+--
+-- NO-FALLBACK: a stat with no breakdown table is NOT fabricated — it returns a
+-- structural CALC_FAILED. A stat whose breakdown exists but holds no contribution
+-- mods returns an EXPLICIT empty `sources` list (never an invented source).
+-- ============================================================================
+
+-- Strip the core's color/escape codes (^xRRGGBB, ^8, ^N) from a display string
+-- (DESIGN §6.4 "표시용 localized label"). Uses the core's own StripEscapes when
+-- available so the result matches what the upstream Calcs tab renders.
+local function stripEscapes(text)
+	if type(text) ~= "string" then
+		return nil
+	end
+	local strip = rawget(_G, "StripEscapes")
+	if type(strip) == "function" then
+		local ok, cleaned = pcall(strip, text)
+		if ok and type(cleaned) == "string" then
+			return cleaned
+		end
+	end
+	return text
+end
+
+-- Source-string PREFIX (the part before the first ":") -> contribution `kind` bucket.
+-- The core stamps every mod's `source` with one of these prefixes (Item.lua modSource
+-- "Item:<id>:<name>", CalcSetup "Tree:<nodeId>", granted-effect "Skill:<id>",
+-- ConfigOptions "Config"). Anything else (Base, Quest:, Strength/Dexterity/Intelligence,
+-- Pantheon:, Spectre:, Many Sources:, slot "Global", ...) is NOT one of the discrete
+-- item/passive/skill/config sources, so it falls into the catch-all buff/other bucket —
+-- we never invent a finer classification the core does not provide.
+local SOURCE_KIND = {
+	Item = "item",
+	Tree = "passive",
+	Skill = "skillGem",
+	Config = "config",
+}
+
+--- calc.classifySource(source) -> kind string.
+--- Classify a core source string into the DESIGN §10.7 contribution bucket
+--- (item / passive / skillGem / config / buff). The prefix before the first ":" is
+--- the discriminator the core itself uses (CalcBreakdownControl:AddModSection); an
+--- unprefixed or unrecognised source is the catch-all "buff" bucket (NO-FALLBACK:
+--- never invent supportGem/skillGem from a source the core did not mark as such).
+function M.calc.classifySource(source)
+	if type(source) ~= "string" then
+		return "buff"
+	end
+	local prefix = source:match("^[^:]+") or source
+	return SOURCE_KIND[prefix] or "buff"
+end
+
+-- Serialize one breakdown `.modList` contribution row ({ value, mod }) into a plain
+-- source entry (DESIGN §6.4). Only stable scalars leave this module; the live mod
+-- table never does. `kind` is the §10.7 classification of mod.source.
+local function serializeContribMod(row)
+	local mod = row.mod or {}
+	local source = scalar(mod.source)
+	return {
+		kind = M.calc.classifySource(source),
+		source = source,
+		value = scalar(row.value),
+		name = scalar(mod.name),
+		modType = scalar(mod.type),
+	}
+end
+
+-- Serialize one breakdown `.slots` contribution row into a plain source entry. A slot
+-- carries `source` (the slot/source name) and `base` (its base contribution); `total`
+-- is the post-inc/more figure as a formatted string. The classified value is the
+-- numeric base contribution (DESIGN §10.7 contribution value).
+local function serializeContribSlot(slot)
+	local source = scalar(slot.source)
+	return {
+		kind = M.calc.classifySource(source),
+		source = source,
+		value = scalar(slot.base),
+		total = scalar(slot.total),
+		sourceName = scalar(slot.sourceName),
+	}
+end
+
+-- Build the flat contribution-source list from a breakdown table (DESIGN §10.7 "기여
+-- source 목록"). Sources come from the pre-built `.modList` rows and the `.slots` rows;
+-- when the breakdown has neither, the list is EXPLICITLY empty (NO fabricated source).
+local function collectSources(breakdown)
+	local sources = {}
+	if type(breakdown.modList) == "table" then
+		for _, row in ipairs(breakdown.modList) do
+			if type(row) == "table" and type(row.mod) == "table" then
+				sources[#sources + 1] = serializeContribMod(row)
+			end
+		end
+	end
+	if type(breakdown.slots) == "table" then
+		for _, slot in ipairs(breakdown.slots) do
+			if type(slot) == "table" then
+				sources[#sources + 1] = serializeContribSlot(slot)
+			end
+		end
+	end
+	return sources
+end
+
+-- Build the formula-trace line list from a breakdown table's ARRAY part (DESIGN §10.7
+-- formula trace). Each entry is a display string the breakdown generators pushed; only
+-- string lines are kept, with color escapes stripped (the sub-tables under string keys
+-- are NOT trace lines and are skipped by reading only the array part).
+local function collectTrace(breakdown)
+	local trace = {}
+	for i = 1, #breakdown do
+		local line = breakdown[i]
+		if type(line) == "string" then
+			trace[#trace + 1] = stripEscapes(line)
+		end
+	end
+	return trace
+end
+
+--- calc.explain(buildId, statId, activeSkillId?) -> { ok, statId, upstreamRawStatId,
+---     finalValue, label, trace, sources } | CoreError envelope.
+--- Drives the core breakdown machine: reads the live CALCS-mode breakdown table
+--- `build.calcsTab.calcsEnv.player.breakdown[statId]` and serializes its §10.7 shape
+--- flat — the formula trace (the breakdown array part), the contribution source list
+--- (the breakdown `.modList` / `.slots`, each classified item/passive/skillGem/config/
+--- buff), and finalValue/label/upstreamRawStatId. A stat that has NO breakdown table is
+--- NOT fabricated: a structural CALC_FAILED is returned (NO-FALLBACK — DESIGN §6.4).
+--- `activeSkillId` is accepted for API parity (DESIGN §6.3) but the breakdown is read
+--- against the build's currently-selected main skill, which is what the live CALCS env
+--- already computed.
+function M.calc.explain(buildId, statId, activeSkillId) -- luacheck: ignore activeSkillId
+	local b, ok = resolveBuild(buildId)
+	if not ok then
+		return b -- already a CoreError envelope
+	end
+	if type(statId) ~= "string" or statId == "" then
+		return err(ERR.CALC_FAILED, "calc.explain requires a non-empty statId")
+	end
+
+	-- The CALCS-mode env is the one whose breakdown table is populated (the MAIN-mode
+	-- pass does not fill breakdowns). CalcsTab:BuildOutput stores it as calcsEnv.
+	local calcsEnv = b.calcsTab and b.calcsTab.calcsEnv
+	local player = calcsEnv and calcsEnv.player
+	if type(player) ~= "table" or type(player.breakdown) ~= "table" then
+		return err(ERR.CALC_FAILED, "build.calcsTab.calcsEnv.player.breakdown is not available")
+	end
+
+	local breakdown = player.breakdown[statId]
+	-- NO-FALLBACK: a stat with no breakdown table is not fabricated. A breakdown stored
+	-- as a generator FUNCTION (the breakdown machine's own helpers, e.g. effMult/slot)
+	-- is not a stat breakdown either, so it is rejected the same way.
+	if type(breakdown) ~= "table" then
+		return err(ERR.CALC_FAILED, "no breakdown is available for stat '" .. statId .. "'")
+	end
+
+	local output = type(player.output) == "table" and player.output or {}
+
+	return {
+		ok = true,
+		statId = statId,
+		upstreamRawStatId = statId,
+		finalValue = scalar(output[statId]),
+		label = stripEscapes(scalar(breakdown.label)) or statId,
+		trace = collectTrace(breakdown),
+		sources = collectSources(breakdown),
+	}
 end
 
 -- Serialize one recognized mod entry from a parsed modLine.modList into a plain
@@ -652,6 +838,439 @@ function M.items.compare(buildId, itemId, slot)
 	end
 
 	return { ok = true, slot = slot, deltas = deltas }
+end
+
+-- ============================================================================
+-- Skills: socket-group editing (DESIGN §6.3 skills.setGemGroup, §10.5 Skills tab)
+--
+-- The live build's skill gems live in build.skillsTab.socketGroupList — an ordered
+-- array of socketGroups, each carrying a gemList (one gemInstance per slotted gem).
+-- The gemInstance is the SAME shape SkillsTab:LoadSkill builds from XML (nameSpec /
+-- gemId / level / quality / enabled, plus the resolved gemData ProcessSocketGroup
+-- attaches). We address a group by its 1-based position in that array, surfaced as a
+-- string `groupId` ("1", "2", ...) so the client has a stable handle to pass back.
+-- ============================================================================
+
+-- Resolve a caller-supplied groupId (a string position from serializeGroup, e.g. "1")
+-- to the live socketGroup at that index. Returns the group + the live skillsTab, or
+-- nil. groupId is the 1-based index of the group in socketGroupList as a string.
+local function resolveGroup(skillsTab, groupId)
+	if type(groupId) ~= "string" or groupId == "" then
+		return nil
+	end
+	local index = tonumber(groupId)
+	if not index or index < 1 then
+		return nil
+	end
+	local group = skillsTab.socketGroupList[index]
+	if type(group) == "table" then
+		return group
+	end
+	return nil
+end
+
+-- Whether a resolved gemInstance grants a SUPPORT effect (vs an active skill). After
+-- ProcessSocketGroup the gem's resolved data hangs off `gemData`; the granted effect's
+-- `.support` flag is the core's own active/support discriminator (SkillsTab.lua:1543).
+-- An unresolved gem (no gemData) defaults to false — it grants no support.
+local function gemIsSupport(gemInstance)
+	local gemData = gemInstance.gemData
+	local grantedEffect = gemData and gemData.grantedEffect
+	return (grantedEffect and grantedEffect.support) and true or false
+end
+
+-- Serialize one live gemInstance into a plain table (DESIGN §6.4). Only the stable
+-- scalar fields the UI gem chip shows are copied — the live gemInstance (which holds
+-- references into the resolved gem data) never leaves this module.
+local function serializeGem(gemInstance)
+	return {
+		gemId = scalar(gemInstance.gemId),
+		nameSpec = scalar(gemInstance.nameSpec) or "",
+		level = scalar(gemInstance.level) or 0,
+		quality = scalar(gemInstance.quality) or 0,
+		enabled = gemInstance.enabled and true or false,
+		isSupport = gemIsSupport(gemInstance),
+	}
+end
+
+-- Build the build-wide spirit + reservation summary from the curated mainOutput
+-- (DESIGN §10.5 "reservation / spirit cost를 즉시 표시"). These are build-level pool
+-- figures (CalcDefence doActorLifeManaSpirit), the same for every group; copied as
+-- plain numeric scalars (absent -> 0, NO null placeholders).
+local function reservationSummary(mainOutput)
+	local function pool(name)
+		return {
+			reserved = scalar(mainOutput[name .. "Reserved"]) or 0,
+			unreserved = scalar(mainOutput[name .. "Unreserved"]) or 0,
+		}
+	end
+	return {
+		spirit = {
+			total = scalar(mainOutput.Spirit) or 0,
+			reserved = scalar(mainOutput.SpiritReserved) or 0,
+			unreserved = scalar(mainOutput.SpiritUnreserved) or 0,
+		},
+		reservation = {
+			mana = pool("Mana"),
+			life = pool("Life"),
+		},
+	}
+end
+
+-- Serialize one live socketGroup into a flat plain table (DESIGN §6.4). `index` is the
+-- group's 1-based position, surfaced as the string `groupId` handle. The shared
+-- build-wide spirit/reservation summary is copied into each group entry.
+local function serializeGroup(group, index, summary)
+	local gems = {}
+	if type(group.gemList) == "table" then
+		for _, gemInstance in ipairs(group.gemList) do
+			gems[#gems + 1] = serializeGem(gemInstance)
+		end
+	end
+	return {
+		groupId = tostring(index),
+		label = scalar(group.label) or "",
+		enabled = group.enabled and true or false,
+		mainActiveSkill = scalar(group.mainActiveSkill) or 1,
+		gems = gems,
+		spirit = summary.spirit,
+		reservation = summary.reservation,
+	}
+end
+
+--- skills.getGroups(buildId) -> { ok, groups } | CoreError envelope.
+--- Serializes build.skillsTab.socketGroupList into a flat list of plain group tables
+--- (groupId, label, enabled, mainActiveSkill, gems[], spirit/reservation summary). No
+--- live core table leaks (DESIGN §6.4): every group, gem, and summary is a fresh plain
+--- table of explicitly-copied scalars.
+function M.skills.getGroups(buildId)
+	local b, ok = resolveBuild(buildId)
+	if not ok then
+		return b -- already a CoreError envelope
+	end
+
+	local skillsTab = b.skillsTab
+	if type(skillsTab) ~= "table" or type(skillsTab.socketGroupList) ~= "table" then
+		return err(ERR.BUILD_PARSE_FAILED, "build.skillsTab has no socket groups")
+	end
+
+	local mainOutput = b.calcsTab and b.calcsTab.mainOutput
+	if type(mainOutput) ~= "table" then
+		return err(ERR.CALC_FAILED, "build.calcsTab.mainOutput is not available")
+	end
+	local summary = reservationSummary(mainOutput)
+
+	local groups = {}
+	for index, group in ipairs(skillsTab.socketGroupList) do
+		groups[#groups + 1] = serializeGroup(group, index, summary)
+	end
+
+	return { ok = true, groups = groups }
+end
+
+-- Convert one caller-supplied gem input into a fresh live gemInstance ProcessSocketGroup
+-- can resolve. The input carries the editable fields (gemId / nameSpec / level / quality
+-- / enabled); the rest of the gemInstance shape ProcessSocketGroup fills in. `count`
+-- defaults to 1 (a single gem) — ProcessSocketGroup / the calc setup expect it present.
+local function gemInstanceFromInput(input)
+	return {
+		gemId = scalar(input.gemId),
+		skillId = scalar(input.skillId),
+		nameSpec = scalar(input.nameSpec) or "",
+		level = scalar(input.level) or 1,
+		quality = scalar(input.quality) or 0,
+		enabled = input.enabled ~= false, -- default-enabled; only an explicit false disables
+		count = 1,
+	}
+end
+
+--- skills.setGemGroup(buildId, groupId, gems) -> { ok, groupId } | CoreError envelope.
+--- REPLACES the target socketGroup's gemList with the supplied gems, re-resolves it via
+--- skillsTab:ProcessSocketGroup, then re-drives the core calc (build.buildFlag = true +
+--- the wired OnFrame callback) so build.calcsTab.mainOutput is recomputed against the new
+--- gem set. Unlike items.compare (which uses GetMiscCalculator for a NON-mutating A-vs-B
+--- pass), this ACTUALLY mutates the live build — so a subsequent calc.run observes the
+--- genuine change (NO A-vs-A stub — DESIGN §6.3).
+function M.skills.setGemGroup(buildId, groupId, gems)
+	local b, ok = resolveBuild(buildId)
+	if not ok then
+		return b -- already a CoreError envelope
+	end
+	if type(gems) ~= "table" then
+		return err(ERR.BUILD_PARSE_FAILED, "skills.setGemGroup requires a gems list (table)")
+	end
+
+	local skillsTab = b.skillsTab
+	if type(skillsTab) ~= "table" or type(skillsTab.socketGroupList) ~= "table" then
+		return err(ERR.BUILD_PARSE_FAILED, "build.skillsTab has no socket groups")
+	end
+
+	local group = resolveGroup(skillsTab, groupId)
+	if not group then
+		return err(ERR.BUILD_PARSE_FAILED, "unknown groupId '" .. tostring(groupId) .. "' (no such socket group)")
+	end
+
+	-- Build the replacement gemList from the inputs, then swap it in and re-resolve.
+	local newGemList = {}
+	for _, input in ipairs(gems) do
+		if type(input) == "table" then
+			newGemList[#newGemList + 1] = gemInstanceFromInput(input)
+		end
+	end
+	group.gemList = newGemList
+
+	-- ProcessSocketGroup re-resolves each gemInstance against the game data (gemData /
+	-- grantedEffect / level validation). build.buildFlag = true marks the calc dirty;
+	-- the wired OnFrame callback (HeadlessWrapper) then runs calcsTab:BuildOutput(),
+	-- refreshing mainOutput against the new gem set (Build.lua:1320-1328).
+	local okCalc, calcErr = pcall(function()
+		skillsTab:ProcessSocketGroup(group)
+		b.buildFlag = true
+		runCallback("OnFrame")
+	end)
+	if not okCalc then
+		return err(ERR.CALC_FAILED, calcErr)
+	end
+
+	return { ok = true, groupId = groupId }
+end
+
+-- ============================================================================
+-- Config: scenario-preset editing (DESIGN §6.3 config.setOption, §10.8 Config tab)
+--
+-- The build's config options are DEFINED by the core's ConfigOptions module (a flat
+-- `varList` of varData entries: section headers + one entry per option) and their
+-- CURRENT values live in build.configTab.input (= the active config set's input map,
+-- keyed by each option's `var`). config.getOptions joins the two into a flat list of
+-- plain option cards; config.setOption writes one value into that input map and
+-- re-drives the core calc so mainOutput reflects the new scenario.
+--
+-- The ConfigOptions varList is loaded once via the core's own LoadModule global (the
+-- same call ConfigTab makes internally) — a pure data list, NO live build reference,
+-- so it is safe to read directly. A section header (varData.section, no .var) is NOT
+-- an editable option, so it is skipped: getOptions returns only real options.
+-- ============================================================================
+
+-- The dependency-hint fields of a varData we surface on each card (DESIGN §10.8 "각
+-- config option은 dependent modifier와 연결"). Each is either a single id or a list of
+-- ids in the core; we always normalise to a plain string list so the client has one
+-- shape. ifSkillData / ifEnemyCond are called out by the task; the sibling ifCond /
+-- ifOption gates are the other conditional dependencies the Config tab evaluates.
+local CONFIG_DEPENDENCY_FIELDS = { "ifSkillData", "ifEnemyCond", "ifCond", "ifOption" }
+
+-- Load the core's ConfigOptions varList (the option DEFINITIONS). Returns the raw
+-- list or nil if the core global is unavailable. This is a pure data table the core
+-- itself caches (LoadModule memoises), so reading it does not touch the live build.
+local function configVarList()
+	local loadModule = rawget(_G, "LoadModule")
+	if type(loadModule) ~= "function" then
+		return nil
+	end
+	local ok, varList = pcall(loadModule, "Modules/ConfigOptions")
+	if not ok or type(varList) ~= "table" then
+		return nil
+	end
+	return varList
+end
+
+-- Clean a core display label for the UI: strip the color/escape codes (^xRRGGBB,
+-- ^N) the core embeds (DESIGN §6.4 "표시용 localized label"). Uses the core's own
+-- StripEscapes when available so the result matches what the upstream UI renders.
+local function cleanLabel(label)
+	if type(label) ~= "string" then
+		return ""
+	end
+	local strip = rawget(_G, "StripEscapes")
+	if type(strip) == "function" then
+		local ok, cleaned = pcall(strip, label)
+		if ok and type(cleaned) == "string" then
+			return cleaned
+		end
+	end
+	return label
+end
+
+-- Normalise a varData dependency field (a single id OR a list of ids) into a plain
+-- string list, or nil when absent. Non-string ids are dropped — the hint is advisory.
+local function dependencyList(value)
+	if type(value) == "string" then
+		return { value }
+	end
+	if type(value) ~= "table" then
+		return nil
+	end
+	local out = {}
+	for _, id in ipairs(value) do
+		if type(id) == "string" then
+			out[#out + 1] = id
+		end
+	end
+	if #out == 0 then
+		return nil
+	end
+	return out
+end
+
+-- Copy a list-type option's choice list into a plain { val, label } array (DESIGN
+-- §6.4). The live varData.list holds {val,label} entries; only those scalars leave
+-- this module, with the label cleaned of escapes.
+local function copyChoiceList(list)
+	local out = {}
+	for _, choice in ipairs(list) do
+		if type(choice) == "table" then
+			out[#out + 1] = { val = scalar(choice.val), label = cleanLabel(choice.label) }
+		end
+	end
+	return out
+end
+
+-- The EFFECTIVE current value of an option: its explicit input value, or — when the
+-- option was never set (input is nil) — the core's OWN default-state resolution
+-- (configTab:GetDefaultState), the same value BuildModList / Save treat as current for
+-- an unset option (ConfigTab:GetDefaultState; a check defaults false, a list its
+-- defaultIndex val, a count 0). This is NOT a fabricated fallback — it is the authentic
+-- value the calc uses for that option, so the card always carries a real scalar.
+local function currentValue(configTab, varData)
+	local set = configTab.input[varData.var]
+	if set ~= nil then
+		return scalar(set)
+	end
+	local ok, def = pcall(function()
+		return configTab:GetDefaultState(varData.var, varData.type == "check" and "boolean" or "string")
+	end)
+	if ok then
+		return scalar(def)
+	end
+	return nil
+end
+
+-- Serialize one varData option DEFINITION + its live current value into a plain card
+-- (DESIGN §6.3 ConfigOptionCard). `configTab` is the live tab, read only for the
+-- effective current value (never referenced into the result). Returns nil for a
+-- section header (no .var), so getOptions emits real options only.
+local function serializeOption(configTab, varData)
+	if not varData.var then
+		return nil
+	end
+	local card = {
+		optionId = varData.var,
+		type = scalar(varData.type) or "",
+		label = cleanLabel(varData.label),
+		value = currentValue(configTab, varData),
+	}
+	-- list-type options carry their fixed { val, label } choices.
+	if varData.type == "list" and type(varData.list) == "table" then
+		card.list = copyChoiceList(varData.list)
+	end
+	-- Dependency hints (DESIGN §10.8): ifSkillData / ifEnemyCond / ifCond / ifOption.
+	for _, field in ipairs(CONFIG_DEPENDENCY_FIELDS) do
+		local hint = dependencyList(varData[field])
+		if hint then
+			card[field] = hint
+		end
+	end
+	return card
+end
+
+-- Resolve the live configTab + its active input map off a build, or a CoreError. The
+-- input map is configSets[activeConfigSetId].input — the same table ConfigTab keeps
+-- in sync as `configTab.input` (ConfigTab:SetActiveConfigSet), keyed by option var.
+local function resolveConfig(b)
+	local configTab = b.configTab
+	if type(configTab) ~= "table" or type(configTab.input) ~= "table" then
+		return nil, err(ERR.BUILD_PARSE_FAILED, "build.configTab has no input map")
+	end
+	return configTab, nil
+end
+
+--- config.getOptions(buildId) -> { ok, options } | CoreError envelope.
+--- Joins the core's ConfigOptions DEFINITIONS with the live configTab.input current
+--- values into a flat list of plain option cards (optionId/var, type, label, value,
+--- list choices, ifSkillData/ifEnemyCond/ifCond/ifOption dependency hints). Section
+--- headers are skipped (only real options are returned). No live core table leaks
+--- (DESIGN §6.4): every card and its nested list/hint tables are fresh plain tables.
+function M.config.getOptions(buildId)
+	local b, ok = resolveBuild(buildId)
+	if not ok then
+		return b -- already a CoreError envelope
+	end
+
+	local configTab, cfgErr = resolveConfig(b)
+	if not configTab then
+		return cfgErr
+	end
+
+	local varList = configVarList()
+	if not varList then
+		return err(ERR.CORE_INIT_FAILED, "core ConfigOptions definitions are not available")
+	end
+
+	local options = {}
+	for _, varData in ipairs(varList) do
+		local card = serializeOption(configTab, varData)
+		if card then
+			options[#options + 1] = card
+		end
+	end
+	if #options == 0 then
+		return err(ERR.BUILD_PARSE_FAILED, "no config options were produced")
+	end
+
+	return { ok = true, options = options }
+end
+
+--- config.setOption(buildId, optionId, value) -> { ok, optionId } | CoreError envelope.
+--- WRITES `value` into the live configTab.input under `optionId`, then re-drives the
+--- core calc (configTab:BuildModList rebuilds the config mod lists, build.buildFlag +
+--- the wired OnFrame callback recompute mainOutput) so a subsequent calc.run observes
+--- the new scenario. This ACTUALLY mutates the live build (unlike items.compare's
+--- non-mutating A-vs-B pass), so toggling one option genuinely changes the calc
+--- (NO-FALLBACK — DESIGN §6.3, §10.8). optionId must be a real ConfigOptions `var`.
+function M.config.setOption(buildId, optionId, value)
+	local b, ok = resolveBuild(buildId)
+	if not ok then
+		return b -- already a CoreError envelope
+	end
+	if type(optionId) ~= "string" or optionId == "" then
+		return err(ERR.BUILD_PARSE_FAILED, "config.setOption requires a non-empty optionId")
+	end
+
+	local configTab, cfgErr = resolveConfig(b)
+	if not configTab then
+		return cfgErr
+	end
+
+	-- Reject an optionId the core does not define (NO silent no-op on a typo — the
+	-- caller must learn it set nothing). A real option is one with a matching `var` in
+	-- the ConfigOptions definitions.
+	local varList = configVarList()
+	if not varList then
+		return err(ERR.CORE_INIT_FAILED, "core ConfigOptions definitions are not available")
+	end
+	local known = false
+	for _, varData in ipairs(varList) do
+		if varData.var == optionId then
+			known = true
+			break
+		end
+	end
+	if not known then
+		return err(ERR.BUILD_PARSE_FAILED, "unknown optionId '" .. optionId .. "' (no such config option)")
+	end
+
+	-- Write the value, rebuild the config mod lists, mark the calc dirty, and run a
+	-- frame so calcsTab:BuildOutput recomputes mainOutput against the new option set.
+	local okCalc, calcErr = pcall(function()
+		configTab.input[optionId] = value
+		configTab:BuildModList()
+		b.buildFlag = true
+		runCallback("OnFrame")
+	end)
+	if not okCalc then
+		return err(ERR.CALC_FAILED, calcErr)
+	end
+
+	return { ok = true, optionId = optionId }
 end
 
 return M
