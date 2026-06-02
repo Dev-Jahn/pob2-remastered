@@ -16,8 +16,9 @@
 - Phase 4: ✓ done — squash-merged to `main` (0459ed0), pushed; review fixed a real config-preset var bug
 - Phase 5: ✓ done — squash-merged to `main` (1b03333), pushed; review fixed live /tree edge connectivity
 - Phase 6: ✓ done — squash-merged to `main` (a221431), pushed
-- Current phase: **7** (Upstream automation & release) — gate-green on `feat/phase-7-release`
-  (`run-gate 7` pass, 7/7 required at exit 0; sign-off recorded below — see "Phase 7 gate evidence")
+- Phase 7: ✓ done — squash-merged to `main` (072c743), pushed
+- **✅ ALL PHASES 0–7 DONE — autonomous DESIGN.md build complete (merged to public `main`, vendor/ untouched).**
+- Next workstream: **DATA/ASSET COLLECTION + bundling** (per 2026-06-02 policy update below).
 - **POLICY UPDATE (2026-06-02): legal review cleared (non-profit) → DESIGN §15 `do_not_bundle` LIFTED.**
   Localization data merged to the (now PUBLIC) repo. Game images/icons + full localization are to be
   **collected live (PoE2DB/poecdn) and BUNDLED into the app + packaging.** Follow-on **DATA/ASSET
