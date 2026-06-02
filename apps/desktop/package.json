@@ -13,6 +13,7 @@
     "@pob2/schema": "workspace:*",
     "@pob2/ui": "workspace:*",
     "@tauri-apps/api": "^2",
+    "ajv": "^8.17.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

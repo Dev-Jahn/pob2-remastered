@@ -55,10 +55,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Setup Lua + LuaJIT
         run: sudo apt-get update && sudo apt-get install -y lua5.1 luajit luarocks
       - name: Golden tests
         run: echo "::notice::TODO Phase 0-1 — boot pob-core-runner, run golden tests + parser fixtures (DESIGN.md §7.4, §16)."
+      - name: Upstream-sync dry-run (Phase 7 gate)
+        run: pnpm --filter @pob2/upstream-sync run dry-run
+      - name: Diagnostic export schema (Phase 7 gate)
+        run: pnpm --filter @pob2/schema test diagnostic
 
   test-localization:
     name: Localization coverage
@@ -89,6 +99,8 @@ jobs:
         run: pnpm --filter @pob2/ui test
       - name: i18n toggle test (@pob2/desktop)
         run: pnpm --filter @pob2/desktop test i18n
+      - name: Updater rollback test (Phase 7 gate)
+        run: pnpm --filter @pob2/desktop test updater
 
   package:
     name: Package (${{ matrix.os }})
@@ -102,5 +114,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Build installers
-        run: echo "::notice::TODO Phase 7 — tauri build + installer/portable artifacts (DESIGN.md §17.2)."
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Packaging dry-run (DESIGN.md §17.2)
+        # Offline rehearsal of the §17 release step: emit the §17.2 release-artifact
+        # manifest (installer/portable placeholders, NOTICE.md, LICENSES/,
+        # DATA_SOURCES.md, core-version.json, localization-version.json, checksums,
+        # signature) reproducibly from the committed tree — no native build, no
+        # signing. The native installer build + signature below are secret-gated.
+        run: node tools/dev-workflow/packaging-dryrun.mjs
+      - name: Build + sign installers
+        # Native tauri build + code signing (humanGate: secret, DESIGN.md §17.2):
+        # the installer/portable artifacts and the detached signature need a signing
+        # key + notarization creds, supplied as secrets. When absent (fork PRs), we
+        # do NOT forge a binary or signature — we stop at the dry-run manifest above.
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::notice::No signing key (humanGate: secret) — native tauri build + signature skipped; packaging dry-run manifest stands in (DESIGN.md §17.2)."
+            exit 0
+          fi
+          pnpm --filter @pob2/desktop tauri build

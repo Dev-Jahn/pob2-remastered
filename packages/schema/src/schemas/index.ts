@@ -12,6 +12,7 @@
  */
 import { CORE_ERROR_CODES } from '../errors.js';
 import type { MvpMethod } from '../core-api.js';
+import { diagnosticExportSchema } from '../diagnostic.js';
 
 /**
  * Minimal structural JSON Schema type. Intentionally narrow: it covers exactly
@@ -863,4 +864,19 @@ export const schemaRegistry: Record<MvpMethod, SchemaEntry> = {
     requestSchema: treeApplyAllocateRequestSchema,
     responseSchema: treeApplyAllocateResponseSchema,
   },
+};
+
+// ----------------------------------------------------------------------------
+// Document schemas — standalone documents (not request/response method pairs)
+// that travel as whole files. Registered alongside `schemaRegistry`, keyed by
+// each schema's `$id`, so the host validator and tools can resolve them the
+// same way they resolve method schemas.
+// ----------------------------------------------------------------------------
+
+/**
+ * The diagnostic export bundle (DESIGN §10.9) lives here rather than in
+ * `schemaRegistry` because it is a standalone document, not a Core API method.
+ */
+export const documentSchemaRegistry: Record<string, JSONSchema> = {
+  [diagnosticExportSchema.$id]: diagnosticExportSchema,
 };

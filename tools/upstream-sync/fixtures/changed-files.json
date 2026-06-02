@@ -1,0 +1,18 @@
+{
+  "$comment": "Committed fixture for the upstream-sync dry-run (DESIGN §7.2). A frozen snapshot of an `upstream/dev` changed-files list so the dry-run never performs a live git fetch or touches a remote. `from`/`to` are the synthetic submodule-pointer SHAs the synthetic PR would bump between; `files` are vendor-relative POSIX paths fed to the §7.3 classifier.",
+  "submodule": "vendor/PathOfBuilding-PoE2",
+  "branch": "dev",
+  "from": "be09d9c917e05bad61f086bdf48aa7d3d09cc131",
+  "to": "a1b2c3d4e5f60718293a4b5c6d7e8f9001122334",
+  "files": [
+    "src/Data/Gems.lua",
+    "src/Data/Uniques/weapons.lua",
+    "src/Modules/CalcOffence.lua",
+    "src/Modules/ModParser.lua",
+    "src/TreeData/0_5/tree.lua",
+    "src/Export/Scripts/gems.lua",
+    "manifest.cfg",
+    "src/Classes/ItemsTab.lua",
+    "docs/notes.md"
+  ]
+}

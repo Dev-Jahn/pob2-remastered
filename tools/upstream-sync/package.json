@@ -1,0 +1,13 @@
+{
+  "name": "@pob2/upstream-sync",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "dry-run": "node src/dry-run.mjs"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

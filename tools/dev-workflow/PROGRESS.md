@@ -16,7 +16,8 @@
 - Phase 4: ✓ done — squash-merged to `main` (0459ed0), pushed; review fixed a real config-preset var bug
 - Phase 5: ✓ done — squash-merged to `main` (1b03333), pushed; review fixed live /tree edge connectivity
 - Phase 6: ✓ done — squash-merged to `main` (a221431), pushed
-- Current phase: **7** (Upstream automation & release) — in progress on `feat/phase-7-release`
+- Current phase: **7** (Upstream automation & release) — gate-green on `feat/phase-7-release`
+  (`run-gate 7` pass, 7/7 required at exit 0; sign-off recorded below — see "Phase 7 gate evidence")
 - **POLICY UPDATE (2026-06-02): legal review cleared (non-profit) → DESIGN §15 `do_not_bundle` LIFTED.**
   Localization data merged to the (now PUBLIC) repo. Game images/icons + full localization are to be
   **collected live (PoE2DB/poecdn) and BUNDLED into the app + packaging.** Follow-on **DATA/ASSET
@@ -31,16 +32,16 @@
 
 ## Phase ledger
 
-| Phase | Status      | Gate evidence                                                                 | 🚩Flags | Blockers |
-| ----- | ----------- | ----------------------------------------------------------------------------- | ------- | -------- |
-| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below                            | 1       |          |
-| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below                               |         |          |
-| 2     | done        | `run-gate 2` pass (8/8); visual verified by direct vision; below              | 2       |          |
-| 3     | done        | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below     | 1       |          |
-| 4     | done        | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below     | 1       |          |
-| 5     | done        | `run-gate 5` pass (5/5 required, exit 0); `/tree` visual verified; below      | 1       |          |
-| 6     | done        | `run-gate 6` pass (7/7 required, exit 0); coverage §8.7 thresholds met; below | 5       |          |
-| 7     | in progress |                                                                               |         |          |
+| Phase | Status | Gate evidence                                                                 | 🚩Flags | Blockers |
+| ----- | ------ | ----------------------------------------------------------------------------- | ------- | -------- |
+| 0     | done   | `run-gate 0` pass; gates+exit codes recorded below                            | 1       |          |
+| 1     | done   | `run-gate 1` pass (7/7 required, exit 0); below                               |         |          |
+| 2     | done   | `run-gate 2` pass (8/8); visual verified by direct vision; below              | 2       |          |
+| 3     | done   | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below     | 1       |          |
+| 4     | done   | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below     | 1       |          |
+| 5     | done   | `run-gate 5` pass (5/5 required, exit 0); `/tree` visual verified; below      | 1       |          |
+| 6     | done   | `run-gate 6` pass (7/7 required, exit 0); coverage §8.7 thresholds met; below | 5       |          |
+| 7     | done   | `run-gate 7` pass (7/7 required, exit 0); doneCriteria→evidence mapping below |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -557,6 +558,155 @@ the open flags below are **carried forward** (still-open), not closed:
 - 🚩 **p3-client-items/runner-gaps — `items.createCustom`** (CARRIED) — the runner still does not implement
   `items.createCustom`; a well-formed request surfaces a structured `UPSTREAM_INCOMPATIBLE` (`-32601`)
   instead of a fabricated card. Resolve when a `p3-lua-createCustom` runner task lands.
+
+## Phase 7 carryover triage (task `p7-carryover-triage`)
+
+Pure ledger bookkeeping — **no code change**. As Phase 7 (Upstream automation & release) opens, this
+records, as an **explicit Phase 7 decision**, that every still-open prior-phase flag carried into this
+phase has been examined against the Phase 7 **doneCriteria** (phases.mjs / DESIGN §18) and **ruled on**,
+so no carried flag can silently drop off the ledger (guarded by `test/progress-phase7.test.mjs`).
+
+Phase 7 is a **release-automation** phase; its three doneCriteria are:
+`upstream update PR 자동 생성 (dry-run)`, `release artifact reproducible (dry-run)`,
+`rollback 가능한 updater (unit)`. The carried
+flags below are all **shipped-UI / data feature gaps**, NOT release-automation work — so the ruling for
+each is the same: **it does not block any Phase 7 doneCriteria** (none of the three touch the Skills-tab
+wiring, the `build.load` BuildState assembly, the WebView share-code codec, `items.createCustom`, the
+official-ko terminology sign-off, or the visual verifier). Each is carried to where it is actually wired:
+
+- 🚩 **p4/skills-tab-read-only** (CARRIED) — `App.tsx` renders `SkillsPanel` without the
+  `onToggleGem`/`onToggleGroup` callbacks, so in-app gem/support toggling is a no-op. Ruling: **does not
+  block** any Phase 7 doneCriteria (sync/release/updater do not drive the Skills tab). **Deferred to** the
+  Skills-tab interactive-polish task (the core `skills.setGemGroup` path + panel callbacks are already
+  wired and tested; only the App-level binding is owed).
+- 🚩 **p1/build-load-response-schema — BuildState gap** (CARRIED) — `build.load`'s response schema still
+  REQUIRES a full BuildState while the runner returns its plain `summary` (`validateResponse:false`).
+  Ruling: **does not block** any Phase 7 doneCriteria (release automation re-runs the existing IPC; it
+  adds no `build.load` BuildState requirement). **Deferred to** the real BuildState-assembly task (request
+  side stays validated — no silent fallback).
+- 🚩 **CARRYOVER (Import/Export) — WebView share-code codec** (CARRIED) — the desktop WebView
+  `loadShareCode`/`saveShareCode` path still needs a browser-safe deflate. Ruling: **does not block** any
+  Phase 7 doneCriteria (the release/updater/sync flows do not encode/decode share codes). **Deferred to**
+  (wire when) the desktop Import/Export flow lands.
+- 🚩 **p3-client-items/runner-gaps — `items.createCustom`** (CARRIED) — the runner still does not implement
+  `items.createCustom`; a well-formed request surfaces a structured `UPSTREAM_INCOMPATIBLE` (`-32601`)
+  instead of a fabricated card. Ruling: **does not block** any Phase 7 doneCriteria (custom-item creation
+  is unrelated to sync/release/updater). **Deferred to** (resolve when) a `p3-lua-createCustom` runner task
+  lands the item-build path.
+- 🚩 **p6/official-ko-terminology** (CARRIED) — the mod/stat (and unique/passive/support) ko strings are
+  confirmed offline against in-game terminology and tagged `manual` provenance; final authoritative
+  confirmation against the live ko client is the documented human gate. Ruling: **does not block** any
+  Phase 7 doneCriteria (release automation ships whatever the dictionary holds; it does not gate on
+  terminology sign-off). **Deferred to** the localization official-terminology human gate (DESIGN §8.1) /
+  the follow-on DATA/ASSET COLLECTION workstream; NO-FALLBACK — the coverage gate re-reds if a ko string
+  is removed.
+- 🚩 **gemini-vision-unavailable** (CARRIED, env limit) — antigravity OAuth is not configured in this env,
+  so the Phase 2–6 visual screens were attested by direct Claude vision (spec §6.1 fallback), not the
+  "precise" LLM verifier. Ruling: **does not block** any Phase 7 doneCriteria (Phase 7 defines no VISUAL
+  screen — `gates.mjs` `VISUAL` has no key `7`; sync/release/updater are headless exit-code gates).
+  **Deferred to** configuring antigravity OAuth (carried forward as the standing visual-verifier env
+  limit, same as `p2`/`p3`/`p4`/`p5/gemini-vision-unavailable`).
+
+## Phase 7 gate evidence (task `p7-gate-green`)
+
+Phase 7 (Upstream automation & release — DESIGN §7 / §13 / §17) freeze. Ran the full Phase 7 gate set
+with `node tools/dev-workflow/run-gate.mjs 7`. Overall `pass: true`, process **exit 0**; all 7 required
+gates exit 0 (the 4 BASE gates `format`/`lint`/`typecheck`/`dev-workflow-tests` + the three Phase 7
+gates `sync-dryrun` + `updater-rollback` + `diagnostic-schema`). `gates.mjs`/`phases.mjs` were consumed
+**exactly as defined — not edited** (`git diff --quiet tools/dev-workflow/gates.mjs tools/dev-workflow/phases.mjs`
+→ `GATES_UNMODIFIED`).
+
+| Gate                 | required | status | exit | what it proves (this run)                                                                              |
+| -------------------- | -------- | ------ | ---- | ------------------------------------------------------------------------------------------------------ |
+| `format`             | true     | pass   | 0    | `pnpm -w format:check` → `All matched files use Prettier code style!`                                  |
+| `lint`               | true     | pass   | 0    | `pnpm -w lint` (eslint .) → no errors                                                                  |
+| `typecheck`          | true     | pass   | 0    | `pnpm -w typecheck` (`tsc -b`) compiles `@pob2/schema` + `@pob2/core-client`                           |
+| `dev-workflow-tests` | true     | pass   | 0    | `@pob2/dev-workflow` — JS guards + pipeline + packaging-dryrun + the Phase 7 sign-off guard (this row) |
+| `sync-dryrun`        | true     | pass   | 0    | `@pob2/upstream-sync run dry-run` — offline classify fixture diff + synthetic PR report (no fetch/PR)  |
+| `updater-rollback`   | true     | pass   | 0    | `@pob2/desktop test updater` — 8 tests (atomic switch + rollback state machine, §13.3)                 |
+| `diagnostic-schema`  | true     | pass   | 0    | `@pob2/schema test diagnostic` — 11 tests (DiagnosticExport schema contract, §10.9)                    |
+
+### Phase 7 doneCriteria → evidence mapping
+
+These map to the Phase 7 **doneCriteria** (phases.mjs / DESIGN §18) — the sign-off rests on this
+doneCriteria → evidence mapping (the task's explicit mapping):
+
+1. **`upstream update PR 자동 생성 (dry-run)`** (upstream PR auto dry-run) ← the **`sync-dryrun`** gate.
+   `pnpm --filter @pob2/upstream-sync run dry-run` runs the OFFLINE upstream-sync rehearsal: it classifies
+   a fixture upstream diff through the pure table-driven diff classifier (DESIGN §7.3) and emits a
+   **synthetic PR report** (the §7.2 "auto-generated update PR" body — per-bucket required follow-up
+   suites: `golden-regression`/`parser-fixtures`/`tree-snapshot`/`exporter-dry-run`/`packaging`/
+   `ui-parity-checklist`, plus an `unknown` manual-triage bucket). NO-FALLBACK / spec §2: the live
+   `git fetch` and the PR `open` are **network-gated and stubbed** — "nothing was fetched and no PR was
+   opened" — so this is a genuine dry-run, not a live scrape and not a fabricated PR. The same dry-run
+   tooling is wired into the sync workflow's Classify / Open-PR steps (DESIGN §7.2–§7.3, commit `7ed3b12`).
+2. **`release artifact reproducible (dry-run)`** (reproducible artifact dry-run) ← the **`packaging-dryrun`**
+   tooling (`tools/dev-workflow/packaging-dryrun.mjs` + `test/packaging-dryrun.test.mjs`, 16 tests, run by
+   the `dev-workflow-tests` gate). It is the OFFLINE rehearsal of the §17 release-artifact packaging step:
+   it emits the DESIGN §17.2 release-artifact **manifest** (installer / portable placeholders, NOTICE.md,
+   LICENSES/, DATA_SOURCES.md, core-version.json, localization-version.json, **checksums**, signature)
+   WITHOUT a native tauri build or signing. The load-bearing property is **REPRODUCIBILITY**: the manifest
+   and checksum output are derived purely from the committed tree (file bytes, the vendored submodule
+   pointer, the generated localization dictionary) — no wall clock, no randomness, no absolute paths — so
+   running the dry-run **twice over the same tree yields byte-identical** manifest + checksum output (the
+   suite asserts this). NO-FALLBACK / spec §2: the native installer build and the code signature are
+   genuinely gated behind a human "secret" gate (signing key, notarization creds) and are represented as
+   DETERMINISTIC, explicitly-labelled placeholders, never faked binaries. The packaging dry-run is wired
+   into the CI package job (DESIGN §17.1, commit `7c2b977`).
+3. **`rollback 가능한 updater (unit)`** (rollback updater unit) ← the **`updater-rollback`** gate.
+   `pnpm --filter @pob2/desktop test updater` runs the 8-test `apps/desktop/src/updater.test.ts` unit suite
+   over the DESIGN §13.3 updater state machine: download → verify → **atomic switch** of the active slot
+   with a retained previous slot, and a **rollback** that atomically restores the previous slot on a failed
+   or rejected update (consuming the §13.1 stable/beta/dev release-channel config). NO-FALLBACK: a failed
+   verify/switch does not silently advance the active version — the unit asserts the active slot is restored
+   to the prior good version, so "rollback 가능한 updater" is proven at the unit level, not assumed.
+
+Recorded exit codes (from this `run-gate 7` invocation): the process exit code is **0** (`run-gate.mjs`
+exits `0` iff no required gate `fail`ed), and each gate's `evidence` line begins `exit=0`. The only
+working-tree change needed to reach green was a Prettier reformat of two pre-existing Phase 7 files
+(`apps/desktop/src/crash-report.ts` — wrapping the `PATH_LIKE` regex + a `redactPaths(...)` call;
+`packages/schema/src/index.ts` — expanding a re-export list to one symbol per line) — pure line-wrapping,
+no logic/assertion change (the `updater-rollback` + `diagnostic-schema` + crash-report suites still pass).
+
+The `p7-gate-green` sign-off is guarded by `test/progress-phase7.test.mjs`, which derives the required gate
+names straight from `gates.mjs` (and asserts `sync-dryrun` + `updater-rollback` + `diagnostic-schema` are
+among them), asserts this Phase 7 ledger row reads `done` with `exit=0` evidence, pins the three
+doneCriteria → evidence mappings (`upstream update PR 자동 생성 (dry-run)` ← `sync-dryrun` /
+`release artifact reproducible (dry-run)` ← `packaging-dryrun` / `rollback 가능한 updater (unit)` ←
+`updater-rollback`), the `gates.mjs`+`phases.mjs`-unmodified note, and the carried-forward flags — so the
+recorded sign-off cannot silently regress and the guard cannot drift from the gate set. (The same file also
+keeps guarding the earlier `p7-carryover-triage` rulings, so no carried flag can drop from the ledger.)
+
+### Phase 7 carryover / flags (CARRYOVER ledger at the `p7-gate-green` freeze)
+
+At the Phase 7 freeze (`run-gate 7` green, 7/7 required at exit 0, `gates.mjs`+`phases.mjs` unmodified)
+the open flags below are **carried forward** (still-open), not closed. Each was triaged in the Phase 7
+carryover triage above as **non-blocking** for the three Phase 7 release-automation doneCriteria, and is
+carried to where it is actually wired:
+
+- 🚩 **p4/skills-tab-read-only** (CARRIED) — `App.tsx` renders `SkillsPanel` without the
+  `onToggleGem`/`onToggleGroup` mutation callbacks, so in-app gem/support toggling is a no-op. **Deferred
+  to** the Skills-tab interactive-polish task (the core `skills.setGemGroup` path + panel callbacks are
+  already wired and tested; only the App-level binding is owed). Does not block any Phase 7 doneCriteria.
+- 🚩 **p1/build-load-response-schema — BuildState gap** (CARRIED) — `build.load`'s response schema still
+  REQUIRES a full BuildState while the runner returns its plain `summary` (`validateResponse:false`).
+  Phase 7 added no `build.load` BuildState requirement (release automation re-runs the existing IPC).
+  **Deferred to** the real BuildState-assembly task (request side stays validated, no silent fallback).
+- 🚩 **CARRYOVER (Import/Export) — WebView share-code codec** (CARRIED) — the desktop WebView
+  `loadShareCode`/`saveShareCode` path still needs a browser-safe deflate. The release/updater/sync flows
+  do not encode/decode share codes. **Deferred to** (wire when) the desktop Import/Export flow lands.
+- 🚩 **p3-client-items/runner-gaps — `items.createCustom`** (CARRIED) — the runner still does not implement
+  `items.createCustom`; a well-formed request surfaces a structured `UPSTREAM_INCOMPATIBLE` (`-32601`)
+  instead of a fabricated card. **Deferred to** (resolve when) a `p3-lua-createCustom` runner task lands.
+- 🚩 **p6/official-ko-terminology** (CARRIED) — the mod/stat (and unique/passive/support) ko strings are
+  confirmed offline against in-game terminology and tagged `manual` provenance; final authoritative
+  confirmation against the live ko client is the documented human gate. **Deferred to** the localization
+  official-terminology human gate (DESIGN §8.1) / the follow-on DATA/ASSET COLLECTION workstream;
+  NO-FALLBACK — the coverage gate re-reds if a ko string is removed.
+- 🚩 **gemini-vision-unavailable** (CARRIED, env limit) — antigravity OAuth is not configured in this env,
+  so the Phase 2–6 visual screens were attested by direct Claude vision (spec §6.1 fallback), not the
+  "precise" LLM verifier. Phase 7 defines no VISUAL screen (`gates.mjs` `VISUAL` has no key `7`;
+  sync/release/updater are headless exit-code gates). **Deferred to** configuring antigravity OAuth.
 
 ## 🚩 Flag log
 

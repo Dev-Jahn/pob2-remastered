@@ -81,5 +81,13 @@ export type {
   MvpMethod,
 } from './core-api.js';
 
-export { schemaRegistry, MVP_METHODS, coreErrorSchema } from './schemas/index.js';
+export {
+  schemaRegistry,
+  MVP_METHODS,
+  coreErrorSchema,
+  documentSchemaRegistry,
+} from './schemas/index.js';
 export type { JSONSchema, SchemaEntry } from './schemas/index.js';
+
+export { diagnosticExportSchema } from './diagnostic.js';
+export type { DiagnosticExport, LocalizationMiss } from './diagnostic.js';

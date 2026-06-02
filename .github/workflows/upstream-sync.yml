@@ -9,8 +9,12 @@ permissions:
   contents: write
   pull-requests: write
 
-# Skeleton for DESIGN.md §7.2-§7.3: fetch upstream/dev, classify the diff, and open
-# a PR that bumps the vendored submodule with a test report. Filled in at Phase 7.
+# DESIGN.md §7.2-§7.3: fetch upstream/dev, classify the diff against the §7.3
+# verification routes, and open a PR that bumps the vendored submodule with a
+# routed test report. The two genuinely networked actions — the live `git fetch`
+# and the PR `open` — are gated (humanGate: network) and only run on the scheduled
+# live job; everything else (classification + report + PR-body synthesis) is the
+# offline @pob2/upstream-sync dry-run, exercised here against its committed fixture.
 
 jobs:
   sync:
@@ -19,6 +23,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Fetch upstream/dev
         run: |
           cd vendor/PathOfBuilding-PoE2
@@ -28,6 +38,23 @@ jobs:
           echo "upstream/dev = $(git rev-parse --short upstream/dev)"
           echo "vendored     = $(git rev-parse --short HEAD)"
       - name: Classify diff
-        run: echo "::notice::TODO Phase 7 — diff classifier routes changes to targeted verification (DESIGN.md §7.3)."
+        # Run the §7.3 classifier + dry-run report over the fetched upstream/dev
+        # diff. The dry-run is offline (committed fixture); the live `git fetch`
+        # above is the network-gated step that supplies the real changed-files
+        # list when run on the schedule.
+        run: pnpm --filter @pob2/upstream-sync dry-run | tee "$RUNNER_TEMP/sync-report.txt"
       - name: Open sync PR
-        run: echo "::notice::TODO Phase 7 — bump submodule pointer + open PR with test report."
+        # Bump the submodule pointer and open the PR with the routed test report
+        # synthesized by the dry-run. The PR `open` is network/secret-gated: it only
+        # runs on the scheduled live job (GITHUB_TOKEN present), never on a fork PR.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "::notice::No token (humanGate: network) — PR open stubbed; routed report:"
+            cat "$RUNNER_TEMP/sync-report.txt"
+            exit 0
+          fi
+          gh pr create \
+            --title "chore(upstream-sync): bump vendor/PathOfBuilding-PoE2" \
+            --body-file "$RUNNER_TEMP/sync-report.txt"
