@@ -43,6 +43,31 @@ export const stringsEn = {
   // marker, never "0" (DESIGN §10.1 "수정값과 계산 결과 구분", NO-FALLBACK).
   'overview.missing': 'Not available',
 
+  // Overview stat-row labels (DESIGN §10.3 cards, §8.1). The offence/defence/
+  // resource card rows resolve their label through `t` so both the missing-stat
+  // fallback label AND the visible stat-row label localize under ko-KR — closing
+  // the carried-over Phase 2 gap where these stayed English (doneCriteria "UI
+  // 문자열 100%"). English text doubles as the §8.1 search/guide alias.
+  'overview.stat.totalDps': 'Total DPS',
+  'overview.stat.averageDamage': 'Average Damage',
+  'overview.stat.critChance': 'Critical Hit Chance',
+  'overview.stat.critMultiplier': 'Critical Damage Bonus',
+  'overview.stat.speed': 'Attack/Cast Rate',
+  'overview.stat.life': 'Life',
+  'overview.stat.mana': 'Mana',
+  'overview.stat.energyShield': 'Energy Shield',
+  'overview.stat.armour': 'Armour',
+  'overview.stat.evasion': 'Evasion',
+  'overview.stat.fireResist': 'Fire Resistance',
+  'overview.stat.coldResist': 'Cold Resistance',
+  'overview.stat.lightningResist': 'Lightning Resistance',
+  'overview.stat.chaosResist': 'Chaos Resistance',
+  'overview.stat.totalEhp': 'Effective Hit Pool',
+  'overview.stat.spirit': 'Spirit',
+  'overview.stat.spiritReserved': 'Spirit Reserved',
+  'overview.stat.manaReserved': 'Mana Reserved',
+  'overview.stat.manaUnreserved': 'Mana Unreserved',
+
   // Overview warning card labels (DESIGN §10.3 warning card).
   'warning.requirementsNotMet': 'Requirements Not Met',
   'warning.resistanceLow': 'Resistance Below Cap',
@@ -210,4 +235,39 @@ export const stringsEn = {
   'tree.tooltip.title': 'Allocating this node increases',
   'tree.delta.title': 'Allocation Delta',
   'tree.delta.missing': 'Not computed',
+
+  // Localization coverage dashboard (DESIGN §18 "coverage dashboard", §8.7
+  // thresholds): the Settings/About → localization screen. The dashboard title,
+  // the per-domain row labels (one §8.7 threshold-table area each), the table
+  // column headers, and the pass/under-target status labels (§11.3: status carries
+  // a text label, never color-only).
+  'coverage.title': 'Translation Coverage',
+  'coverage.domain.ui': 'UI Strings',
+  'coverage.domain.keyword': 'Keywords',
+  'coverage.domain.skill': 'Skill Gems',
+  'coverage.domain.supportGem': 'Support Gems',
+  'coverage.domain.base': 'Item Bases',
+  'coverage.domain.unique': 'Unique Items',
+  'coverage.domain.passive': 'Passive Nodes',
+  'coverage.domain.mod': 'Modifiers',
+  'coverage.domain.stat': 'Stat Descriptions',
+  'coverage.header.domain': 'Area',
+  'coverage.header.count': 'Translated / Total',
+  'coverage.header.percent': 'Coverage',
+  'coverage.header.mvp': 'MVP Target',
+  'coverage.header.stable': 'Stable Target',
+  'coverage.header.status': 'Status',
+  'coverage.status.met': 'Met',
+  'coverage.status.underTarget': 'Under Target',
+
+  // Manual review UI (DESIGN §8.6 step 5 manual review UI, §18 "manual review UI"):
+  // the Settings/About → localization → manual review screen. The panel title, the
+  // empty-state hint, the candidate-matches list label, the free-text internal-id
+  // input label (where the reviewer types an id for an unsupported §8.6 line —
+  // NO-FALLBACK, never auto-accepted), and the submit-mapping button.
+  'review.title': 'Manual Mapping Review',
+  'review.empty': 'No terms to review',
+  'review.candidates': 'Candidate Matches',
+  'review.internalIdLabel': 'Internal Id',
+  'review.submit': 'Propose Mapping',
 } as const;

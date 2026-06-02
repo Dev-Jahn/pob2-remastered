@@ -43,6 +43,31 @@ export const stringsKo: Record<StringKey, string> = {
   // marker, never "0" (DESIGN §10.1 "수정값과 계산 결과 구분", NO-FALLBACK).
   'overview.missing': '값 없음 (Not available)',
 
+  // Overview stat-row labels (DESIGN §10.3 cards, §8.1). The offence/defence/
+  // resource card rows resolve their label through `t` so both the missing-stat
+  // fallback label AND the visible stat-row label localize under ko-KR — closing
+  // the carried-over Phase 2 gap where these stayed English (doneCriteria "UI
+  // 문자열 100%"). Each entry keeps the §8.1 "한국어 (English)" alias.
+  'overview.stat.totalDps': '총 DPS (Total DPS)',
+  'overview.stat.averageDamage': '평균 피해 (Average Damage)',
+  'overview.stat.critChance': '치명타 확률 (Critical Hit Chance)',
+  'overview.stat.critMultiplier': '치명타 피해 보너스 (Critical Damage Bonus)',
+  'overview.stat.speed': '공격/시전 속도 (Attack/Cast Rate)',
+  'overview.stat.life': '생명력 (Life)',
+  'overview.stat.mana': '마나 (Mana)',
+  'overview.stat.energyShield': '에너지 보호막 (Energy Shield)',
+  'overview.stat.armour': '방어도 (Armour)',
+  'overview.stat.evasion': '회피 (Evasion)',
+  'overview.stat.fireResist': '화염 저항 (Fire Resistance)',
+  'overview.stat.coldResist': '냉기 저항 (Cold Resistance)',
+  'overview.stat.lightningResist': '번개 저항 (Lightning Resistance)',
+  'overview.stat.chaosResist': '카오스 저항 (Chaos Resistance)',
+  'overview.stat.totalEhp': '유효 생명력 (Effective Hit Pool)',
+  'overview.stat.spirit': '정신력 (Spirit)',
+  'overview.stat.spiritReserved': '정신력 예약 (Spirit Reserved)',
+  'overview.stat.manaReserved': '마나 예약 (Mana Reserved)',
+  'overview.stat.manaUnreserved': '미예약 마나 (Mana Unreserved)',
+
   // Overview warning card labels (DESIGN §10.3 warning card).
   'warning.requirementsNotMet': '요구 능력치 부족 (Requirements Not Met)',
   'warning.resistanceLow': '저항 부족 (Resistance Below Cap)',
@@ -210,4 +235,40 @@ export const stringsKo: Record<StringKey, string> = {
   'tree.tooltip.title': '이 노드를 찍으면 증가하는 stat (Allocating this node increases)',
   'tree.delta.title': '할당 변화 (Allocation Delta)',
   'tree.delta.missing': '값 없음 (Not computed)',
+
+  // Localization coverage dashboard (DESIGN §18 "coverage dashboard", §8.7
+  // thresholds): the Settings/About → localization screen. The dashboard title,
+  // the per-domain row labels (one §8.7 threshold-table area each), the table
+  // column headers, and the pass/under-target status labels (§11.3: status carries
+  // a text label, never color-only). Each entry keeps the §8.1 "한국어 (English)" alias.
+  'coverage.title': '번역 커버리지 (Translation Coverage)',
+  'coverage.domain.ui': 'UI 문자열 (UI Strings)',
+  'coverage.domain.keyword': '키워드 (Keywords)',
+  'coverage.domain.skill': '스킬 젬 (Skill Gems)',
+  'coverage.domain.supportGem': '보조 젬 (Support Gems)',
+  'coverage.domain.base': '아이템 기본 (Item Bases)',
+  'coverage.domain.unique': '고유 아이템 (Unique Items)',
+  'coverage.domain.passive': '패시브 노드 (Passive Nodes)',
+  'coverage.domain.mod': '수식어 (Modifiers)',
+  'coverage.domain.stat': '스탯 설명 (Stat Descriptions)',
+  'coverage.header.domain': '영역 (Area)',
+  'coverage.header.count': '번역 / 전체 (Translated / Total)',
+  'coverage.header.percent': '커버리지 (Coverage)',
+  'coverage.header.mvp': 'MVP 목표 (MVP Target)',
+  'coverage.header.stable': 'Stable 목표 (Stable Target)',
+  'coverage.header.status': '상태 (Status)',
+  'coverage.status.met': '달성 (Met)',
+  'coverage.status.underTarget': '미달 (Under Target)',
+
+  // Manual review UI (DESIGN §8.6 step 5 manual review UI, §18 "manual review UI"):
+  // the Settings/About → localization → manual review screen. The panel title, the
+  // empty-state hint, the candidate-matches list label, the free-text internal-id
+  // input label (where the reviewer types an id for an unsupported §8.6 line —
+  // NO-FALLBACK, never auto-accepted), and the submit-mapping button. Each entry
+  // keeps the §8.1 "한국어 (English)" alias.
+  'review.title': '수동 매핑 검토 (Manual Mapping Review)',
+  'review.empty': '검토할 용어 없음 (No terms to review)',
+  'review.candidates': '후보 일치 (Candidate Matches)',
+  'review.internalIdLabel': '내부 식별자 (Internal Id)',
+  'review.submit': '매핑 제안 (Propose Mapping)',
 };

@@ -302,3 +302,53 @@ export { BreakdownSection } from './calcs/BreakdownSection.js';
 export type { BreakdownSectionProps } from './calcs/BreakdownSection.js';
 export { FormulaTrace } from './calcs/FormulaTrace.js';
 export type { FormulaTraceProps } from './calcs/FormulaTrace.js';
+
+// Coverage dashboard (DESIGN §18 "coverage dashboard", §8.7 thresholds): the
+// Settings/About → localization screen view of the loc-coverage metric. Pure
+// view-model (buildCoverageDashboardModel: the per-domain Coverage map → one graded
+// row per §8.7 domain — localized ko/en label key, translated/total, percent,
+// MVP/Stable target, met/under-target status; a 0/0 domain stays 0% and grades under
+// target, NO-FALLBACK) plus the §8.7 MVP/Stable threshold tables, and CoverageDashboard
+// (the thin table renderer: status as a data attribute AND a text label per §11.3).
+export {
+  buildCoverageDashboardModel,
+  COVERAGE_MVP_THRESHOLDS,
+  COVERAGE_STABLE_THRESHOLDS,
+} from './localization/coverage-dashboard.js';
+export type {
+  CoverageDomain,
+  DomainCoverage,
+  Coverage,
+  CoverageStatus,
+  CoverageDashboardRow,
+  CoverageDashboardModel,
+} from './localization/coverage-dashboard.js';
+export { CoverageDashboard } from './localization/CoverageDashboard.js';
+export type { CoverageDashboardProps } from './localization/CoverageDashboard.js';
+
+// Manual review UI (DESIGN §8.6 step 5 "사용자가 직접 mod mapping을 제안할 수 있는
+// review UI", §8.6 step 6 manual_ko_mod_overrides.json, §18 "manual review UI"). Pure
+// view-model (buildReviewQueueModel: the loc-match review queue — fuzzy/unmatched
+// terms + §8.6 unsupported clipboard mod lines → one review entry each, a fuzzy term
+// carrying its candidate upstream ids, a clipboard line carrying none; proposeOverride-
+// FromEntry: a chosen Korean→internal-id mapping → a PENDING ManualOverride destined
+// for manual_ko_mod_overrides.json, throwing on an empty id so a line is never auto-
+// accepted, NO-FALLBACK) plus ManualReviewPanel (the renderer: candidate-pick buttons
+// for a fuzzy term, a free-text internal-id input for an unsupported line, emitting the
+// proposal through onProposeOverride — persistence is a callback, no direct FS).
+export {
+  buildReviewQueueModel,
+  proposeOverrideFromEntry,
+  REVIEW_OVERRIDE_FILE,
+} from './localization/review-queue.js';
+export type {
+  QueuedTerm,
+  ReviewQueueInput,
+  ReviewEntryKind,
+  ReviewEntry,
+  ReviewQueueModel,
+  ProposedMapping,
+  ManualOverrideProposal,
+} from './localization/review-queue.js';
+export { ManualReviewPanel } from './localization/ManualReviewPanel.js';
+export type { ManualReviewPanelProps } from './localization/ManualReviewPanel.js';

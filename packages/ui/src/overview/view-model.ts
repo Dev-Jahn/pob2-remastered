@@ -14,6 +14,7 @@
  * not compute, default, or invent any value.
  */
 import type { CalcRunResponse, StatResult } from '@pob2/schema';
+import type { StringKey } from '../i18n/index.js';
 
 /**
  * Plain build summary the headless runner serializes on load. Structurally
@@ -33,10 +34,15 @@ export interface BuildSummary {
  * (`present: true`, with its real numeric `value`) or it was absent (`present:
  * false`, `missing: true`, `value` undefined). Discriminated on `present` so a
  * missing stat can never be read as `0`.
+ *
+ * The row label is carried as an i18n `labelKey` (not a baked-in string) so the
+ * renderer resolves it through `t(locale, labelKey)` — both the missing-stat
+ * fallback label and the visible present-stat label localize under ko-KR (§8.1,
+ * §10.3; closes the carried-over Phase 2 English-label gap).
  */
 export type OverviewField =
-  | { statId: string; label: string; present: true; value: number }
-  | { statId: string; label: string; present: false; missing: true; value?: undefined };
+  | { statId: string; labelKey: StringKey; present: true; value: number }
+  | { statId: string; labelKey: StringKey; present: false; missing: true; value?: undefined };
 
 /** A single Overview card: a title key plus its ordered fields (§10.3). */
 export interface OverviewCard {
@@ -54,60 +60,62 @@ export interface OverviewModel {
 }
 
 /**
- * The stat ids each card requests, in display order, with the fallback label to
- * show when the stat is missing (a present stat carries its own `calc.run`
- * label). Stat ids are the upstream PoB `mainOutput` keys the core emits
+ * The stat ids each card requests, in display order, paired with the i18n
+ * `labelKey` the renderer resolves through `t(locale, labelKey)`. The key drives
+ * both a present row's label and a missing row's fallback label, so the labels
+ * localize under ko-KR (§8.1, §10.3) instead of the English `calc.run` text.
+ * Stat ids are the upstream PoB `mainOutput` keys the core emits
  * (overlays/lua/modern_api.lua CORE_STATS) plus the standard upstream crit /
  * speed / reservation keys for the §10.3 fields the curated set does not yet
  * surface — so those resolve to `missing` rather than a fabricated value.
  */
-const OFFENCE_SPEC: ReadonlyArray<readonly [statId: string, label: string]> = [
-  ['TotalDPS', 'Total DPS'],
-  ['AverageDamage', 'Average Damage'],
-  ['CritChance', 'Critical Hit Chance'],
-  ['CritMultiplier', 'Critical Damage Bonus'],
-  ['Speed', 'Attack/Cast Rate'],
+const OFFENCE_SPEC: ReadonlyArray<readonly [statId: string, labelKey: StringKey]> = [
+  ['TotalDPS', 'overview.stat.totalDps'],
+  ['AverageDamage', 'overview.stat.averageDamage'],
+  ['CritChance', 'overview.stat.critChance'],
+  ['CritMultiplier', 'overview.stat.critMultiplier'],
+  ['Speed', 'overview.stat.speed'],
 ];
 
-const DEFENCE_SPEC: ReadonlyArray<readonly [statId: string, label: string]> = [
-  ['Life', 'Life'],
-  ['Mana', 'Mana'],
-  ['EnergyShield', 'Energy Shield'],
-  ['Armour', 'Armour'],
-  ['Evasion', 'Evasion'],
-  ['FireResist', 'Fire Resistance'],
-  ['ColdResist', 'Cold Resistance'],
-  ['LightningResist', 'Lightning Resistance'],
-  ['ChaosResist', 'Chaos Resistance'],
-  ['TotalEHP', 'Effective Hit Pool'],
+const DEFENCE_SPEC: ReadonlyArray<readonly [statId: string, labelKey: StringKey]> = [
+  ['Life', 'overview.stat.life'],
+  ['Mana', 'overview.stat.mana'],
+  ['EnergyShield', 'overview.stat.energyShield'],
+  ['Armour', 'overview.stat.armour'],
+  ['Evasion', 'overview.stat.evasion'],
+  ['FireResist', 'overview.stat.fireResist'],
+  ['ColdResist', 'overview.stat.coldResist'],
+  ['LightningResist', 'overview.stat.lightningResist'],
+  ['ChaosResist', 'overview.stat.chaosResist'],
+  ['TotalEHP', 'overview.stat.totalEhp'],
 ];
 
-const RESOURCE_SPEC: ReadonlyArray<readonly [statId: string, label: string]> = [
-  ['Spirit', 'Spirit'],
-  ['SpiritReserved', 'Spirit Reserved'],
-  ['ManaReserved', 'Mana Reserved'],
-  ['ManaUnreserved', 'Mana Unreserved'],
+const RESOURCE_SPEC: ReadonlyArray<readonly [statId: string, labelKey: StringKey]> = [
+  ['Spirit', 'overview.stat.spirit'],
+  ['SpiritReserved', 'overview.stat.spiritReserved'],
+  ['ManaReserved', 'overview.stat.manaReserved'],
+  ['ManaUnreserved', 'overview.stat.manaUnreserved'],
 ];
 
 /** Resolve one card field from the stat lookup, marking absent stats as missing. */
 function toField(
   byId: ReadonlyMap<string, StatResult>,
   statId: string,
-  fallbackLabel: string,
+  labelKey: StringKey,
 ): OverviewField {
   const stat = byId.get(statId);
   if (stat === undefined) {
-    return { statId, label: fallbackLabel, present: false, missing: true };
+    return { statId, labelKey, present: false, missing: true };
   }
-  return { statId, label: stat.label, present: true, value: stat.value };
+  return { statId, labelKey, present: true, value: stat.value };
 }
 
 function buildCard(
   byId: ReadonlyMap<string, StatResult>,
   titleKey: OverviewCard['titleKey'],
-  spec: ReadonlyArray<readonly [string, string]>,
+  spec: ReadonlyArray<readonly [string, StringKey]>,
 ): OverviewCard {
-  return { titleKey, fields: spec.map(([statId, label]) => toField(byId, statId, label)) };
+  return { titleKey, fields: spec.map(([statId, labelKey]) => toField(byId, statId, labelKey)) };
 }
 
 /**

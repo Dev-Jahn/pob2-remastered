@@ -95,5 +95,21 @@
       "Lightning Resistance does not affect Lightning damage taken"
     ],
     "unsupported": []
+  },
+  "ko-rare-ring": {
+    "intent": "Korean-client rare ring exercising the EXPANDED parser: numeric-roll affix patterns (any roll value, not a fixed literal) for resistance/attribute/mana/attack-speed/move-speed, a Korean implicit marker, and the corrupted marker; one untranslated Korean line preserved as unsupported (§8.6 step 4, NO drop)",
+    "locale": "ko-KR",
+    "baseId": "Sapphire Ring",
+    "rarity": "RARE",
+    "name": "Searing Loop, Sapphire Ring",
+    "parsedMods": [
+      "+25% to Cold Resistance",
+      "+25% to Fire Resistance",
+      "+30 to maximum Mana",
+      "12% increased Attack Speed",
+      "+18 to Dexterity",
+      "15% increased Movement Speed"
+    ],
+    "unsupported": ["이 옵션은 아직 번역되지 않은 한국어 줄입니다"]
   }
 }

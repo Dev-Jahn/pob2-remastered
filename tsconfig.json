@@ -5,6 +5,7 @@
     { "path": "packages/schema" },
     { "path": "packages/core-client" },
     { "path": "packages/ui" },
+    { "path": "packages/localization" },
     { "path": "apps/desktop" }
   ]
 }

@@ -2,5 +2,21 @@
   "name": "@pob2/localization",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -b && node scripts/build-dictionary.mjs",
+    "coverage:check": "node scripts/coverage-check.mjs"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
 }

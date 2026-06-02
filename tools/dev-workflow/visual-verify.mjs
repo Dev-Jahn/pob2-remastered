@@ -26,6 +26,24 @@ const REPO_ROOT = resolve(__dirname, '..', '..');
 // (spec §2: reuse, don't fabricate) without adding a dependency anywhere.
 const HARNESS_HOST = join(REPO_ROOT, 'apps', 'desktop');
 
+// The §18 localization (coverage + manual review) screen. gates.mjs has NO VISUAL[6]
+// entry and MUST NOT be modified (deliverable), so — unlike the Phase 2–5 screens
+// pulled from gates.mjs VISUAL — this screen is defined IN-MODULE: its `--check`
+// path is a NON-BLOCKING best-effort visual check, not a required phase gate. Its
+// `assert` list names the localization-screen facts a vision read verifies (per-domain
+// coverage rows + under-target markers + ko/en labels), the same shape gates.mjs
+// VISUAL screens use so `runVisualCheck` / `checkRoute` consume it uniformly.
+export const localizationScreen = {
+  name: 'localization',
+  route: '/settings/localization',
+  assert: [
+    'Coverage dashboard: one row per §8.7 domain (UI/keyword/skill/…/mod/stat) with translated/total count, measured percent, MVP + Stable target (§18, §8.7)',
+    'Under-target domains are visibly marked (status text "미달 (Under Target)" + data-status), not merely a non-green cell (§11.3, §8.7 NO-FALLBACK 0%)',
+    'Manual review queue: fuzzy term with candidate ids + an unsupported clipboard mod line offered for mapping (§8.6 step 5)',
+    'Korean labels visible with English aliases in parens (e.g. "번역 커버리지 (Translation Coverage)"); rendered under ko-KR (§8.1)',
+  ],
+};
+
 export async function captureUrl(url, out, { width = 1366, height = 768 } = {}) {
   const browser = await chromium.launch();
   try {
@@ -70,12 +88,18 @@ export function captureTauri(bin, out) {
 // serve has no runner for, so the harness supplies fixture data instead.
 // ---------------------------------------------------------------------------
 
-/** Locate the VISUAL screen registered for `route`, across all phases. */
+/**
+ * Locate the VISUAL screen registered for `route`. Scans gates.mjs VISUAL across all
+ * phases, then falls back to the in-module {@link localizationScreen} — the §18
+ * localization screen has NO gates.mjs VISUAL[6] entry (non-blocking best-effort), so
+ * its definition lives here.
+ */
 function visualScreenFor(route) {
   for (const screens of Object.values(VISUAL)) {
     const hit = screens.find((s) => s.route === route);
     if (hit) return hit;
   }
+  if (route === localizationScreen.route) return localizationScreen;
   return undefined;
 }
 
@@ -322,8 +346,90 @@ createRoot(document.getElementById('root')!).render(
 );
 `;
 
+// §18 localization screen (gates.mjs VISUAL has NO [6] entry — this screen is a
+// NON-BLOCKING best-effort check, so it is defined in-module via `localizationScreen`
+// below, not pulled from gates.mjs). Representative §8.7/§8.6 data: a per-domain
+// loc-coverage map run through the SHIPPED buildCoverageDashboardModel (so the rows
+// are real graded numbers, incl. an UNDER-TARGET domain so the §11.3 under-target
+// marker paints) + a §8.6 review queue (a fuzzy term with candidate ids + an
+// unsupported clipboard mod line). Rendered under locale ko-KR so the bilingual
+// (ko/en) i18n labels paint (e.g. "번역 커버리지 (Translation Coverage)"). Embedded as
+// a source string so `harnessFiles('/settings/localization').entry` is the buildable
+// .tsx and the data round-trips through the SHIPPED transforms (spec §2: reuse).
+const LOCALIZATION_HARNESS_ENTRY = `import { createRoot } from 'react-dom/client';
+import { AppShell, CoverageDashboard, ManualReviewPanel } from '@pob2/ui';
+import type { Coverage, ReviewQueueInput } from '@pob2/ui';
+import '@pob2/ui/styles.css';
+
+// A per-domain loc-coverage map (the §8.7 metric output the dashboard consumes): a
+// row for EVERY §8.7 domain. A met domain (ui 100%), several partials, and explicit
+// UNDER-TARGET domains — \`passive\` below its 85% MVP bar and \`stat\` at 0/0 → 0% (the
+// honest 0%, NO-FALLBACK) — so the under-target status marker paints in the table.
+const pct = (translated: number, total: number) =>
+  total === 0 ? 0 : Math.round((translated / total) * 100);
+const dc = (translated: number, total: number) => ({ translated, total, percent: pct(translated, total) });
+const coverage: Coverage = {
+  ui: dc(420, 420), // 100% — met (UI 문자열 100% bar)
+  keyword: dc(190, 200), // 95% — met
+  skill: dc(96, 100), // 96% — met
+  support_gem: dc(58, 60), // 97% — met
+  base: dc(180, 200), // 90% — met
+  unique: dc(85, 100), // 85% — UNDER 90% MVP bar
+  passive: dc(120, 200), // 60% — UNDER 85% MVP bar (under-target)
+  mod: dc(140, 300), // 47% — UNDER 70% MVP bar (under-target)
+  stat: dc(0, 0), // 0/0 → 0% — UNDER 70% (NO-FALLBACK honest 0%)
+};
+
+// A §8.6 review queue: a fuzzy term (carries candidate upstream ids the reviewer
+// disambiguates) + an unsupported clipboard mod line (NO candidates — the reviewer
+// must supply an internal id; never auto-accepted). The fuzzy \`term\` is typed
+// through ReviewQueueInput (its \`terms[].term\` is a LocalizedTerm), so no extra
+// import is needed.
+const reviewInput: ReviewQueueInput = {
+  terms: [
+    {
+      term: {
+        id: 'mod_fuzzy_added_fire',
+        domain: 'mod',
+        canonicalEn: 'Adds # to # Fire Damage',
+        ko: '# ~ #의 화염 피해 추가',
+        aliasesEn: [],
+        aliasesKo: [],
+        upstreamIds: [],
+        confidence: 'fuzzy',
+        source: 'poe2db',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      },
+      candidateUpstreamIds: ['AddedFireDamageMod1', 'AddedFireDamageMod2'],
+    },
+  ],
+  unsupportedClipboardLines: ['적에게 빙결을 유발할 때 50% 증가된 피해 (unsupported affix line)'],
+};
+
+createRoot(document.getElementById('root')!).render(
+  <AppShell
+    locale="ko-KR"
+    onLocaleChange={() => {}}
+    buildName="Deadeye / Lightning Arrow"
+    activeSkill="Lightning Arrow"
+    activeTab="overview"
+    workspace={
+      <div className="pob-localization-settings">
+        <CoverageDashboard locale="ko-KR" coverage={coverage} />
+        <ManualReviewPanel locale="ko-KR" input={reviewInput} onProposeOverride={() => {}} />
+      </div>
+    }
+    inspector={null}
+  />,
+);
+`;
+
 /** Map a VISUAL route to its harness entry source + index.html. */
-const HARNESS_ENTRIES = { '/calcs': CALCS_HARNESS_ENTRY, '/tree': TREE_HARNESS_ENTRY };
+const HARNESS_ENTRIES = {
+  '/calcs': CALCS_HARNESS_ENTRY,
+  '/tree': TREE_HARNESS_ENTRY,
+  '/settings/localization': LOCALIZATION_HARNESS_ENTRY,
+};
 
 // Per-route stat rows to pre-expand before screenshotting, so the §10.7 source
 // list + formula trace (collapsed by default) are VISIBLE in the capture. These
@@ -493,7 +599,9 @@ export async function runVisualCheck(route, { dims = ['1366x768', '1366x1100'], 
       const page = await browser.newPage({ viewport: { width, height } });
       await page.goto(served.url, { waitUntil: 'networkidle', timeout: 30000 });
       // Let React paint the SPA before capturing (the screen's root container).
-      await page.waitForSelector('.pob-calcs, .pob-tree', { timeout: 15000 }).catch(() => {});
+      await page
+        .waitForSelector('.pob-calcs, .pob-tree, .pob-coverage', { timeout: 15000 })
+        .catch(() => {});
       // Expand the representative trace rows so the §10.7 source list + formula
       // trace are VISIBLE in the screenshot (collapsed rows hide them). These rows
       // carry a real calc.explain trace in the fixture data. (calcs only.)
@@ -567,6 +675,37 @@ const ROUTE_ASSERTS = {
     if (!/data-minimap-viewport/.test(html)) failures.push('no minimap painted');
     // The node search box (gates.mjs VISUAL[5] "node search box").
     if (!/data-testid="tree-search"/.test(html)) failures.push('no node search box painted');
+    return failures;
+  },
+  '/settings/localization'(res) {
+    const html = res.servedHtml;
+    const failures = [];
+    // The §8.7 per-domain coverage table + a row for every §8.7 domain (the
+    // localizationScreen "per-domain coverage rows" assert).
+    if (!/class="[^"]*pob-coverage__table/.test(html)) failures.push('no coverage table painted');
+    for (const domain of [
+      'ui',
+      'keyword',
+      'skill',
+      'support_gem',
+      'base',
+      'unique',
+      'passive',
+      'mod',
+      'stat',
+    ]) {
+      if (!new RegExp(`data-domain="${domain}"`).test(html))
+        failures.push(`missing ${domain} coverage row`);
+    }
+    // An under-target marker (§11.3: status carries a data-attr AND localized text —
+    // the localizationScreen "under-target markers" assert). A blank/all-met harness
+    // (e.g. an empty store coerced to 100%) would lack this — NO-FALLBACK.
+    if (!/data-status="under-target"/.test(html)) failures.push('no under-target row marked');
+    // The §8.6 manual review queue (the localizationScreen "review queue" assert).
+    if (!/class="[^"]*pob-review/.test(html)) failures.push('no manual review panel painted');
+    // ko/en bilingual labels: the ko-KR i18n strings carry the English alias in
+    // parens (the localizationScreen "ko/en labels" assert).
+    if (!/\(Translation Coverage\)/.test(html)) failures.push('no ko/en bilingual labels painted');
     return failures;
   },
 };

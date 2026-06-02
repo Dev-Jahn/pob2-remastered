@@ -9,3 +9,13 @@ pnpm-lock.yaml
 
 # Authored design doc — kept verbatim, not reformatted.
 DESIGN.md
+
+# Cached PoE2DB HTML fixtures — captured statically, kept byte-faithful so the
+# offline importer sees real source markup (DESIGN §8.4, §14.3). Not reformatted.
+packages/localization/fixtures/poe2db/
+
+# Generated ko-KR dictionary — a deterministic build product whose layout is owned
+# by serializeDictionary (sorted keys, fixed field order, trailing newline → stable
+# diff, DESIGN §12.2). Prettier must not reformat it or the reproducible artifact
+# and the format gate would disagree on the array layout.
+packages/localization/generated/dictionary.json

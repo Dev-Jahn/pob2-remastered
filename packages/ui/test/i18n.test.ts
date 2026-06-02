@@ -195,6 +195,44 @@ describe('@pob2/ui i18n baseline', () => {
     }
   });
 
+  it('covers the Overview stat-row label keys (DESIGN §10.3, §8.1): offence/defence/resource', () => {
+    // Overview stat-row labels (§10.3): the offence/defence/resource card rows
+    // resolve their label through `t` so the missing-stat fallback labels AND the
+    // visible stat-row labels are Korean under ko-KR (CARRYOVER p2/stat-label-locale,
+    // doneCriteria "UI 문자열 100%"). Every key below must exist in both locales and
+    // — being a real translation, not a copy — read differently ko≠en (§8.1).
+    const statKeys: StringKey[] = [
+      // Offence card rows.
+      'overview.stat.totalDps',
+      'overview.stat.averageDamage',
+      'overview.stat.critChance',
+      'overview.stat.critMultiplier',
+      'overview.stat.speed',
+      // Defence card rows.
+      'overview.stat.life',
+      'overview.stat.mana',
+      'overview.stat.energyShield',
+      'overview.stat.armour',
+      'overview.stat.evasion',
+      'overview.stat.fireResist',
+      'overview.stat.coldResist',
+      'overview.stat.lightningResist',
+      'overview.stat.chaosResist',
+      'overview.stat.totalEhp',
+      // Resource card rows.
+      'overview.stat.spirit',
+      'overview.stat.spiritReserved',
+      'overview.stat.manaReserved',
+      'overview.stat.manaUnreserved',
+    ];
+    for (const key of statKeys) {
+      expect(koKeys).toContain(key);
+      expect(enKeys).toContain(key);
+      // The Korean stat label is a real translation, never the English copy (§8.1).
+      expect(t('ko-KR', key)).not.toBe(t('en-US', key));
+    }
+  });
+
   it('resolves every key to a non-empty string in both locales', () => {
     for (const locale of locales) {
       for (const key of enKeys) {

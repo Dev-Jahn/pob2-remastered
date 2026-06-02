@@ -17,8 +17,8 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    // Node-side scripts (dev-workflow CLIs, tooling, config) run under Node, not the browser.
-    files: ['tools/**/*.{mjs,cjs,js}', '**/*.config.{mjs,cjs,js}'],
+    // Node-side scripts (dev-workflow CLIs, package scripts, tooling, config) run under Node, not the browser.
+    files: ['tools/**/*.{mjs,cjs,js}', '**/scripts/**/*.{mjs,cjs,js}', '**/*.config.{mjs,cjs,js}'],
     languageOptions: {
       globals: { ...globals.node },
     },

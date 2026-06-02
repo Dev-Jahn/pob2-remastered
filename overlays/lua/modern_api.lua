@@ -468,22 +468,129 @@ local KO_LINE = {
 	["희귀도: 마법"] = "Rarity: Magic",
 	["희귀도: 희귀"] = "Rarity: Rare",
 	["희귀도: 고유"] = "Rarity: Unique",
+	-- Item-class line (cosmetic for parsing — the base line drives type resolution —
+	-- but kept ASCII so the class anchor is the real English term, not a "?" echo).
+	["아이템 종류: 반지"] = "Item Class: Rings",
 	-- Base / unique names (resolved against data.itemBases / unique data)
 	["판금 철퇴"] = "Plated Mace",
 	["비늘 갑옷"] = "Scale Mail",
+	["사파이어 반지"] = "Sapphire Ring",
+	-- Custom/unique display names (the title line the core keeps verbatim as the
+	-- item's name; a rare's name does NOT have to resolve against data, but it must
+	-- be ASCII so the core does not sanitise its Hangul to "?").
 	["파멸의 핏줄"] = "Brood Bane",
 	["도리아니의 시제품"] = "Doryani's Prototype",
-	-- Curated explicit mods (-> the exact English the core's mod parser matches)
-	["힘 +15"] = "+15 to Strength",
-	["물리 피해 54% 증가"] = "54% increased Physical Damage",
-	["최대 생명력 +22"] = "+22 to maximum Life",
-	["냉기 저항 +18%"] = "+18% to Cold Resistance",
-	["방어도 70% 증가"] = "70% increased Armour",
-	["최대 생명력 +72"] = "+72 to maximum Life",
+	["타오르는 고리"] = "Searing Loop",
+	-- Behavioural / multi-clause mods that carry no numeric roll, so they cannot be
+	-- expressed as a numeric-roll pattern and stay as whole-line translations.
 	["방어도의 100%만큼 번개 피해에도 적용"] = "+100% of Armour also applies to Lightning Damage",
 	["당신의 존재 범위 내 적의 번개 저항이 당신과 동일해짐"] = "Enemies in your Presence have Lightning Resistance equal to yours",
 	["번개 저항은 받는 번개 피해에 영향을 주지 않음"] = "Lightning Resistance does not affect Lightning damage taken",
 }
+
+-- Korean element words shared by the resistance / added-damage affix families, so a
+-- single pattern family covers every element instead of one literal per roll value.
+local KO_ELEMENT = {
+	["화염"] = "Fire",
+	["냉기"] = "Cold",
+	["번개"] = "Lightning",
+	["혼돈"] = "Chaos",
+}
+
+-- Korean attribute words (the `+N <attribute>` affix family).
+local KO_ATTRIBUTE = {
+	["힘"] = "Strength",
+	["민첩"] = "Dexterity",
+	["지능"] = "Intelligence",
+}
+
+-- §8.5 "normalized description pattern" mapping: numeric-roll affix patterns. Each
+-- entry is a `match(line) -> englishLine | nil` translator. Unlike the whole-line
+-- KO_LINE table (which pins one literal per roll value), these recognise a Korean
+-- affix TEMPLATE and carry ITS numeric roll(s) into the English the core's mod
+-- parser matches — so any roll value of a covered affix translates, not just the
+-- few literals a curated corpus happened to contain. Hangul bytes are all >= 0x80,
+-- so they never collide with the ASCII pattern metacharacters in the number/sign
+-- captures; the templates byte-match the UTF-8 source directly.
+local KO_AFFIX = {
+	-- "<element> 저항 +N%"  ->  "+N% to <Element> Resistance"
+	function(line)
+		local element, sign, num = line:match("^(.+) 저항 ([%+%-]?)(%d+)%%$")
+		if element and KO_ELEMENT[element] then
+			return ("%s%s%% to %s Resistance"):format(sign, num, KO_ELEMENT[element])
+		end
+	end,
+	-- "<attribute> +N"  ->  "+N to <Attribute>"
+	function(line)
+		local attr, sign, num = line:match("^(.+) ([%+%-]?)(%d+)$")
+		if attr and KO_ATTRIBUTE[attr] then
+			return ("%s%s to %s"):format(sign, num, KO_ATTRIBUTE[attr])
+		end
+	end,
+	-- "최대 생명력 +N"  ->  "+N to maximum Life"
+	function(line)
+		local sign, num = line:match("^최대 생명력 ([%+%-]?)(%d+)$")
+		if num then
+			return ("%s%s to maximum Life"):format(sign, num)
+		end
+	end,
+	-- "최대 마나 +N"  ->  "+N to maximum Mana"
+	function(line)
+		local sign, num = line:match("^최대 마나 ([%+%-]?)(%d+)$")
+		if num then
+			return ("%s%s to maximum Mana"):format(sign, num)
+		end
+	end,
+	-- "물리 피해 N% 증가"  ->  "N% increased Physical Damage"
+	function(line)
+		local num = line:match("^물리 피해 (%d+)%% 증가$")
+		if num then
+			return ("%s%% increased Physical Damage"):format(num)
+		end
+	end,
+	-- "방어도 N% 증가"  ->  "N% increased Armour"
+	function(line)
+		local num = line:match("^방어도 (%d+)%% 증가$")
+		if num then
+			return ("%s%% increased Armour"):format(num)
+		end
+	end,
+	-- "공격 속도 N% 증가"  ->  "N% increased Attack Speed"
+	function(line)
+		local num = line:match("^공격 속도 (%d+)%% 증가$")
+		if num then
+			return ("%s%% increased Attack Speed"):format(num)
+		end
+	end,
+	-- "이동 속도 N% 증가"  ->  "N% increased Movement Speed"
+	function(line)
+		local num = line:match("^이동 속도 (%d+)%% 증가$")
+		if num then
+			return ("%s%% increased Movement Speed"):format(num)
+		end
+	end,
+}
+
+-- Translate one trimmed Korean mod line via the numeric-roll affix patterns
+-- (§8.5). Returns the English line the core parses, or nil if no pattern matches
+-- (so the caller falls back to leaving it verbatim -> unsupported, §8.6 step 4).
+-- A trailing Korean implicit marker "(암시적)" is rewritten to the English
+-- "(implicit)" the core uses to slot the mod into implicitModLines.
+local function translateKoreanAffix(line)
+	local implicit = ""
+	local body = line:match("^(.-)%s*%(암시적%)$")
+	if body then
+		line = body
+		implicit = " (implicit)"
+	end
+	for _, match in ipairs(KO_AFFIX) do
+		local en = match(line)
+		if en then
+			return en .. implicit
+		end
+	end
+	return nil
+end
 
 -- Korean line PREFIX -> English prefix translations for `label: value` spec lines
 -- whose value (a number/range) carries over unchanged. Ordered, longest-first, so
@@ -544,6 +651,11 @@ local function translateKoreanClipboard(text)
 						break
 					end
 				end
+			end
+			-- §8.5 numeric-roll affix patterns: a Korean mod line with no whole-line /
+			-- prefix translation may still be a known affix template carrying a roll.
+			if not translated then
+				translated = translateKoreanAffix(line)
 			end
 			if translated then
 				out[#out + 1] = translated

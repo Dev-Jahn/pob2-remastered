@@ -86,7 +86,11 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)
 
-  packages/localization: {}
+  packages/localization:
+    devDependencies:
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)
 
   packages/schema:
     devDependencies:
@@ -99,6 +103,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@pob2/localization':
+        specifier: workspace:*
+        version: link:../localization
       '@pob2/schema':
         specifier: workspace:*
         version: link:../schema

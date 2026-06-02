@@ -1,0 +1,149 @@
+{
+  "$comment": "Manual ko-KR override store (DESIGN §8.4 step J). Human-confirmed terms that WIN over the generated dictionary for the same id, plus manual-only entries for §18 domains the importer/match step does not yet cover (item unique, passive node, support gem). Each entry is `manual` source/confidence. An override that names only `id` + `ko` patches an existing generated term's Korean string; an override carrying the full record (domain/canonicalEn/...) admits a brand-new manual-only entry. The English alias is never emptied (§8.1). `updatedAt` is the authored provenance date (checked in, NOT wall-clock) so the build artifact is deterministic.",
+  "updatedAt": "2026-06-02T00:00:00.000Z",
+  "overrides": [
+    {
+      "id": "passive.Acrobatics",
+      "domain": "passive",
+      "canonicalEn": "Acrobatics",
+      "ko": "곡예",
+      "aliasesEn": ["Acrobatics"],
+      "aliasesKo": ["곡예", "아크로바틱스"],
+      "upstreamIds": ["node-23005"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Notable passive — confirmed against in-game ko term."
+    },
+    {
+      "id": "unique.Original_Sin",
+      "domain": "unique",
+      "canonicalEn": "Original Sin",
+      "ko": "원죄",
+      "aliasesEn": ["Original Sin"],
+      "aliasesKo": ["원죄"],
+      "upstreamIds": ["Original Sin"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Unique amulet — confirmed against in-game ko term."
+    },
+    {
+      "id": "support_gem.Martial_Tempo",
+      "domain": "support_gem",
+      "canonicalEn": "Martial Tempo",
+      "ko": "전투 박자",
+      "aliasesEn": ["Martial Tempo"],
+      "aliasesKo": ["전투 박자"],
+      "upstreamIds": ["Metadata/Items/Gems/SupportGemMartialTempo"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Support gem — confirmed against in-game ko term."
+    },
+    {
+      "id": "stat.maximum_life",
+      "domain": "stat",
+      "canonicalEn": "maximum Life",
+      "ko": "최대 생명력",
+      "aliasesEn": ["maximum Life", "max life", "life"],
+      "aliasesKo": ["최대 생명력", "생명력"],
+      "upstreamIds": ["base_maximum_life"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Stat description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "stat.maximum_energy_shield",
+      "domain": "stat",
+      "canonicalEn": "maximum Energy Shield",
+      "ko": "최대 에너지 보호막",
+      "aliasesEn": ["maximum Energy Shield", "max es", "energy shield"],
+      "aliasesKo": ["최대 에너지 보호막", "에너지 보호막"],
+      "upstreamIds": ["maximum_energy_shield"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Stat description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "stat.maximum_mana",
+      "domain": "stat",
+      "canonicalEn": "maximum Mana",
+      "ko": "최대 마나",
+      "aliasesEn": ["maximum Mana", "max mana", "mana"],
+      "aliasesKo": ["최대 마나", "마나"],
+      "upstreamIds": ["base_maximum_mana"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Stat description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "stat.movement_speed",
+      "domain": "stat",
+      "canonicalEn": "Movement Speed",
+      "ko": "이동 속도",
+      "aliasesEn": ["Movement Speed", "ms"],
+      "aliasesKo": ["이동 속도", "이속"],
+      "upstreamIds": ["base_movement_velocity_+%"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Stat description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "stat.critical_hit_chance",
+      "domain": "stat",
+      "canonicalEn": "Critical Hit Chance",
+      "ko": "치명타 확률",
+      "aliasesEn": ["Critical Hit Chance", "crit chance"],
+      "aliasesKo": ["치명타 확률", "치확"],
+      "upstreamIds": ["critical_strike_chance_+%"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Stat description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "mod.increased_physical_damage",
+      "domain": "mod",
+      "canonicalEn": "#% increased Physical Damage",
+      "ko": "물리 피해 #% 증가",
+      "aliasesEn": ["increased Physical Damage", "phys damage"],
+      "aliasesKo": ["물리 피해 증가", "물뎀"],
+      "upstreamIds": ["LocalIncreasedPhysicalDamagePercent"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Mod description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "mod.increased_attack_speed",
+      "domain": "mod",
+      "canonicalEn": "#% increased Attack Speed",
+      "ko": "공격 속도 #% 증가",
+      "aliasesEn": ["increased Attack Speed", "attack speed", "ias"],
+      "aliasesKo": ["공격 속도 증가", "공속"],
+      "upstreamIds": ["IncreasedAttackSpeedPercent"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Mod description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "mod.added_fire_damage",
+      "domain": "mod",
+      "canonicalEn": "Adds # to # Fire Damage",
+      "ko": "# - # 화염 피해 추가",
+      "aliasesEn": ["Adds Fire Damage", "added fire damage"],
+      "aliasesKo": ["화염 피해 추가"],
+      "upstreamIds": ["LocalAddedFireDamage"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Mod description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "mod.increased_maximum_life",
+      "domain": "mod",
+      "canonicalEn": "#% increased maximum Life",
+      "ko": "최대 생명력 #% 증가",
+      "aliasesEn": ["increased maximum Life", "increased life"],
+      "aliasesKo": ["최대 생명력 증가", "생명력 증가"],
+      "upstreamIds": ["IncreasedMaximumLifePercent"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Mod description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    },
+    {
+      "id": "mod.fire_resistance",
+      "domain": "mod",
+      "canonicalEn": "+#% to Fire Resistance",
+      "ko": "화염 저항 +#%",
+      "aliasesEn": ["Fire Resistance", "fire res"],
+      "aliasesKo": ["화염 저항", "화저"],
+      "upstreamIds": ["FireResistance"],
+      "updatedAt": "2026-06-02T00:00:00.000Z",
+      "note": "Mod description — confirmed against in-game ko client term (FLAG: official terminology, DESIGN §8.1)."
+    }
+  ]
+}

@@ -42,7 +42,49 @@ See `DESIGN.md` §9 and §15 for the full rationale.
   "Boot prerequisites" document the install step. Third-party notice retained per
   `DESIGN.md` §15.1.
 
+## 5. PoE2DB importer (localization mapping + attribution)
+
+This section pins down the legal/attribution boundary for the Phase 6 PoE2DB
+importer (`DESIGN.md` §18) and complements the short PoE2DB entry in section 2
+above. See `DESIGN.md` §8.4–§8.5 (import pipeline), §14.3 (importer constraints),
+and §15.2–§15.3 (legal policy).
+
+- **Source:** PoE2DB `kr/` and `us/` category pages (keywords, item bases, skill
+  gems; `https://poe2db.tw/kr/` and `https://poe2db.tw/us/`).
+- **Use — mapping + attribution source ONLY:** PoE2DB pages are consumed as a
+  Korean ↔ English **localization mapping** (slug → bilingual name/stat text) and
+  as an **attribution source**. They are **not** an asset-redistribution channel:
+  the importer derives a term dictionary, it does **not** copy or re-host PoE2DB
+  pages or GGG-owned assets. Icon URLs are recorded as remote references only.
+- **§14.3 constraints (importer policy):**
+  - **Rate-limited and cached** — any live fetch is throttled and writes to a
+    local cache; the importer never re-fetches a page it already has.
+  - **robots/ToU-aware** — fetching respects PoE2DB `robots.txt` and Terms of Use.
+  - **Offline fixtures only at CI** — CI and `pnpm build`/dictionary generation run
+    purely over checked-in cached HTML under
+    `packages/localization/fixtures/poe2db/{us,kr}/` (`importFromFixtures` reads
+    disk, never HTTP). A malformed/changed source schema **fails** rather than
+    silently degrading (`FixtureParseError` → CI failure), per §14.3.
+  - **No unbounded runtime scraping** — the shipped app performs no scraping; there
+    is no app-runtime crawl loop. Dictionary refresh is an offline, bounded,
+    developer-run import — not a background job.
+- **§15.2 GGG-asset boundary:** Icons/images surfaced via PoE2DB remain GGG-owned.
+  They stay `do_not_bundle` by default (`DESIGN.md` §9.3): referenced remotely with
+  user-side cache, never packaged, pending separate legal review. The importer only
+  records icon `remoteUrl`/attribution; it bundles no image bytes.
+- **Where the generated artifacts live:**
+  - Generated dictionary: `packages/localization/generated/dictionary.json`
+    (deterministic output of `scripts/build-dictionary.mjs`; `source: generated`,
+    with PoE2DB-derived terms carrying `source: poe2db` attribution).
+  - Manual overrides: `packages/localization/manual_ko_overrides.json`
+    (human-confirmed terms that win over the generated dictionary; `DESIGN.md`
+    §8.4 step J).
+  - Importer entrypoint/policy: `tools/poe2db-importer/` and
+    `packages/localization/src/importer.ts`.
+
 ## Release artifacts
 
 Releases must ship `LICENSE`, `NOTICE.md`, this file, and component version
-manifests (`DESIGN.md` §17.2).
+manifests (`DESIGN.md` §17.2). Per `DESIGN.md` §15.3, every release artifact
+includes this `DATA_SOURCES.md`, so the PoE2DB importer's mapping-only /
+attribution / `do_not_bundle` policy above travels with each release.

@@ -4,8 +4,8 @@
  * §10.1 "수정값과 계산 결과 구분" + §6.4 (localized label vs machine stat id): each
  * row binds an {@link OverviewField} from the view-model. The row layers three
  * things distinctly —
- *   - the human label (the `calc.run` localized label for a present stat, or the
- *     view-model's fallback label for a missing one),
+ *   - the human label, resolved through `t(locale, field.labelKey)` so it
+ *     localizes under ko-KR (§8.1) for both present and missing rows,
  *   - the value column, and
  *   - the machine `statId`, surfaced as a `data-stat-id` attribute so a row can be
  *     located and styled by its upstream id.
@@ -37,7 +37,7 @@ function StatRow({ field, locale }: { field: OverviewField; locale: Locale }) {
       data-stat-id={field.statId}
       data-missing={field.present ? undefined : 'true'}
     >
-      <span className="pob-stat-card__label">{field.label}</span>
+      <span className="pob-stat-card__label">{t(locale, field.labelKey)}</span>
       {field.present ? (
         <span className="pob-stat-card__value">{field.value}</span>
       ) : (

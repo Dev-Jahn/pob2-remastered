@@ -1,0 +1,399 @@
+{
+  "base.Hunting_Shoes": {
+    "id": "base.Hunting_Shoes",
+    "domain": "base",
+    "canonicalEn": "Hunting Shoes",
+    "ko": "사냥용 신발",
+    "aliasesEn": [
+      "Hunting Shoes",
+      "Evasion Rating: 120"
+    ],
+    "aliasesKo": [
+      "회피 등급: 120"
+    ],
+    "upstreamIds": [
+      "Hunting Shoes"
+    ],
+    "confidence": "exact",
+    "source": "generated",
+    "updatedAt": "2026-06-02T00:00:00.000Z",
+    "slug": "Hunting_Shoes"
+  },
+  "base.Smithing_Hammer": {
+    "id": "base.Smithing_Hammer",
+    "domain": "base",
+    "canonicalEn": "Smithing Hammer",
+    "ko": "대장장이 망치",
+    "aliasesEn": [
+      "Smithing Hammer",
+      "Physical Damage: 18-31"
+    ],
+    "aliasesKo": [
+      "물리 피해: 18-31"
+    ],
+    "upstreamIds": [
+      "Smithing Hammer"
+    ],
+    "confidence": "exact",
+    "source": "generated",
+    "updatedAt": "2026-06-02T00:00:00.000Z",
+    "slug": "Smithing_Hammer"
+  },
+  "keyword.Ailment": {
+    "id": "keyword.Ailment",
+    "domain": "keyword",
+    "canonicalEn": "Ailment",
+    "ko": "상태 이상",
+    "aliasesEn": [
+      "Ailment",
+      "Ailments are detrimental effects associated with one or more damage types."
+    ],
+    "aliasesKo": [
+      "상태 이상은 하나 이상의 피해 유형과 연관된 해로운 효과입니다."
+    ],
+    "upstreamIds": [],
+    "confidence": "slug",
+    "source": "generated",
+    "updatedAt": "2026-06-02T00:00:00.000Z",
+    "slug": "Ailment"
+  },
+  "keyword.Energy_Shield": {
+    "id": "keyword.Energy_Shield",
+    "domain": "keyword",
+    "canonicalEn": "Energy Shield",
+    "ko": "에너지 보호막",
+    "aliasesEn": [
+      "Energy Shield",
+      "Energy Shield is an automatically recharging layer of protection over Life."
+    ],
+    "aliasesKo": [
+      "에너지 보호막은 생명력 위에 자동으로 재충전되는 보호 계층입니다."
+    ],
+    "upstreamIds": [],
+    "confidence": "slug",
+    "source": "generated",
+    "updatedAt": "2026-06-02T00:00:00.000Z",
+    "slug": "Energy_Shield"
+  },
+  "keyword.Evasion": {
+    "id": "keyword.Evasion",
+    "domain": "keyword",
+    "canonicalEn": "Evasion",
+    "ko": "회피",
+    "aliasesEn": [
+      "Evasion",
+      "Evasion Rating reduces the chance to be hit by attacks."
+    ],
+    "aliasesKo": [
+      "회피 등급은 공격에 맞을 확률을 감소시킵니다."
+    ],
+    "upstreamIds": [],
+    "confidence": "slug",
+    "source": "generated",
+    "updatedAt": "2026-06-02T00:00:00.000Z",
+    "slug": "Evasion"
+  },
+  "mod.added_fire_damage": {
+    "id": "mod.added_fire_damage",
+    "domain": "mod",
+    "canonicalEn": "Adds # to # Fire Damage",
+    "ko": "# - # 화염 피해 추가",
+    "aliasesEn": [
+      "Adds # to # Fire Damage",
+      "Adds Fire Damage",
+      "added fire damage"
+    ],
+    "aliasesKo": [
+      "화염 피해 추가"
+    ],
+    "upstreamIds": [
+      "LocalAddedFireDamage"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "mod.fire_resistance": {
+    "id": "mod.fire_resistance",
+    "domain": "mod",
+    "canonicalEn": "+#% to Fire Resistance",
+    "ko": "화염 저항 +#%",
+    "aliasesEn": [
+      "+#% to Fire Resistance",
+      "Fire Resistance",
+      "fire res"
+    ],
+    "aliasesKo": [
+      "화염 저항",
+      "화저"
+    ],
+    "upstreamIds": [
+      "FireResistance"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "mod.increased_attack_speed": {
+    "id": "mod.increased_attack_speed",
+    "domain": "mod",
+    "canonicalEn": "#% increased Attack Speed",
+    "ko": "공격 속도 #% 증가",
+    "aliasesEn": [
+      "#% increased Attack Speed",
+      "increased Attack Speed",
+      "attack speed",
+      "ias"
+    ],
+    "aliasesKo": [
+      "공격 속도 증가",
+      "공속"
+    ],
+    "upstreamIds": [
+      "IncreasedAttackSpeedPercent"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "mod.increased_maximum_life": {
+    "id": "mod.increased_maximum_life",
+    "domain": "mod",
+    "canonicalEn": "#% increased maximum Life",
+    "ko": "최대 생명력 #% 증가",
+    "aliasesEn": [
+      "#% increased maximum Life",
+      "increased maximum Life",
+      "increased life"
+    ],
+    "aliasesKo": [
+      "최대 생명력 증가",
+      "생명력 증가"
+    ],
+    "upstreamIds": [
+      "IncreasedMaximumLifePercent"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "mod.increased_physical_damage": {
+    "id": "mod.increased_physical_damage",
+    "domain": "mod",
+    "canonicalEn": "#% increased Physical Damage",
+    "ko": "물리 피해 #% 증가",
+    "aliasesEn": [
+      "#% increased Physical Damage",
+      "increased Physical Damage",
+      "phys damage"
+    ],
+    "aliasesKo": [
+      "물리 피해 증가",
+      "물뎀"
+    ],
+    "upstreamIds": [
+      "LocalIncreasedPhysicalDamagePercent"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "passive.Acrobatics": {
+    "id": "passive.Acrobatics",
+    "domain": "passive",
+    "canonicalEn": "Acrobatics",
+    "ko": "곡예",
+    "aliasesEn": [
+      "Acrobatics"
+    ],
+    "aliasesKo": [
+      "곡예",
+      "아크로바틱스"
+    ],
+    "upstreamIds": [
+      "node-23005"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "skill.Spark": {
+    "id": "skill.Spark",
+    "domain": "skill",
+    "canonicalEn": "Spark",
+    "ko": "스파크",
+    "aliasesEn": [
+      "Spark",
+      "Launches unpredictable sparks that move randomly until they hit an enemy."
+    ],
+    "aliasesKo": [
+      "적과 충돌할 때까지 무작위로 움직이는 예측 불가능한 불꽃을 발사합니다."
+    ],
+    "upstreamIds": [
+      "Metadata/Items/Gems/SkillGemSpark"
+    ],
+    "confidence": "exact",
+    "source": "generated",
+    "updatedAt": "2026-06-02T00:00:00.000Z",
+    "slug": "Spark"
+  },
+  "skill.Whirling_Assault": {
+    "id": "skill.Whirling_Assault",
+    "domain": "skill",
+    "canonicalEn": "Whirling Assault",
+    "ko": "소용돌이 강타",
+    "aliasesEn": [
+      "Whirling Assault",
+      "Spin towards a target, striking enemies along the way."
+    ],
+    "aliasesKo": [
+      "대상을 향해 회전하며 경로상의 적을 타격합니다."
+    ],
+    "upstreamIds": [
+      "Metadata/Items/Gems/SkillGemWhirlingAssault"
+    ],
+    "confidence": "exact",
+    "source": "generated",
+    "updatedAt": "2026-06-02T00:00:00.000Z",
+    "slug": "Whirling_Assault"
+  },
+  "stat.critical_hit_chance": {
+    "id": "stat.critical_hit_chance",
+    "domain": "stat",
+    "canonicalEn": "Critical Hit Chance",
+    "ko": "치명타 확률",
+    "aliasesEn": [
+      "Critical Hit Chance",
+      "crit chance"
+    ],
+    "aliasesKo": [
+      "치명타 확률",
+      "치확"
+    ],
+    "upstreamIds": [
+      "critical_strike_chance_+%"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "stat.maximum_energy_shield": {
+    "id": "stat.maximum_energy_shield",
+    "domain": "stat",
+    "canonicalEn": "maximum Energy Shield",
+    "ko": "최대 에너지 보호막",
+    "aliasesEn": [
+      "maximum Energy Shield",
+      "max es",
+      "energy shield"
+    ],
+    "aliasesKo": [
+      "최대 에너지 보호막",
+      "에너지 보호막"
+    ],
+    "upstreamIds": [
+      "maximum_energy_shield"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "stat.maximum_life": {
+    "id": "stat.maximum_life",
+    "domain": "stat",
+    "canonicalEn": "maximum Life",
+    "ko": "최대 생명력",
+    "aliasesEn": [
+      "maximum Life",
+      "max life",
+      "life"
+    ],
+    "aliasesKo": [
+      "최대 생명력",
+      "생명력"
+    ],
+    "upstreamIds": [
+      "base_maximum_life"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "stat.maximum_mana": {
+    "id": "stat.maximum_mana",
+    "domain": "stat",
+    "canonicalEn": "maximum Mana",
+    "ko": "최대 마나",
+    "aliasesEn": [
+      "maximum Mana",
+      "max mana",
+      "mana"
+    ],
+    "aliasesKo": [
+      "최대 마나",
+      "마나"
+    ],
+    "upstreamIds": [
+      "base_maximum_mana"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "stat.movement_speed": {
+    "id": "stat.movement_speed",
+    "domain": "stat",
+    "canonicalEn": "Movement Speed",
+    "ko": "이동 속도",
+    "aliasesEn": [
+      "Movement Speed",
+      "ms"
+    ],
+    "aliasesKo": [
+      "이동 속도",
+      "이속"
+    ],
+    "upstreamIds": [
+      "base_movement_velocity_+%"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "support_gem.Martial_Tempo": {
+    "id": "support_gem.Martial_Tempo",
+    "domain": "support_gem",
+    "canonicalEn": "Martial Tempo",
+    "ko": "전투 박자",
+    "aliasesEn": [
+      "Martial Tempo"
+    ],
+    "aliasesKo": [
+      "전투 박자"
+    ],
+    "upstreamIds": [
+      "Metadata/Items/Gems/SupportGemMartialTempo"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  },
+  "unique.Original_Sin": {
+    "id": "unique.Original_Sin",
+    "domain": "unique",
+    "canonicalEn": "Original Sin",
+    "ko": "원죄",
+    "aliasesEn": [
+      "Original Sin"
+    ],
+    "aliasesKo": [
+      "원죄"
+    ],
+    "upstreamIds": [
+      "Original Sin"
+    ],
+    "confidence": "manual",
+    "source": "manual",
+    "updatedAt": "2026-06-02T00:00:00.000Z"
+  }
+}
