@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 // The live collector is a Node script; its pure parser/pairing functions are unit-tested here
 // against the real PoE2DB card structure (verified against live kr/us Keywords pages).
-import { parsePoe2dbCards, parseFigureCards, pairCards } from '../scripts/collect-live.mjs';
+import {
+  parsePoe2dbCards,
+  parseFigureCards,
+  parseUniqueCards,
+  pairCards,
+} from '../scripts/collect-live.mjs';
 
 const card = (slug: string, name: string, desc: string, icon = '') =>
   `<div class="d-flex border-top rounded"><div class="flex-shrink-0">${icon}</div>` +
@@ -29,6 +34,17 @@ describe('parsePoe2dbCards', () => {
   it('returns [] for HTML without keyword cards (so the collector can fail loud on 0)', () => {
     expect(parsePoe2dbCards('<html><body>no cards here</body></html>')).toEqual([]);
   });
+
+  it('dedupes by slug, keeping the first occurrence (the Keywords page repeats some entries)', () => {
+    // The real /us/Keywords page lists a few keywords twice (e.g. Enraged) in different sections;
+    // without dedup these become duplicate `keyword.<slug>` ids whose merge order is arbitrary.
+    const html =
+      card('Enraged', '격앙', 'primary section text') +
+      card('Enraged', '격앙됨', 'cross-reference section text');
+    const cards = parsePoe2dbCards(html);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ slug: 'Enraged', name: '격앙' }); // first kept
+  });
 });
 
 describe('parseFigureCards (gem grid)', () => {
@@ -50,6 +66,41 @@ describe('parseFigureCards (gem grid)', () => {
       iconUrl: 'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/4K/enfeeble.webp',
     });
     expect(cards[1].iconUrl).toBe('https://cdn.poe2db.tw/image/x.webp'); // relative → absolute
+  });
+});
+
+describe('parseUniqueCards (unique-item list)', () => {
+  // Real PoE2DB /us/Unique_item card: an image-anchor (slug + icon) followed by a name-anchor
+  // carrying <span class="uniqueName"> and <span class="uniqueTypeLine"> (the base type).
+  const uniq = (slug: string, name: string, typeLine: string, icon: string) =>
+    `<div class="flex-shrink-0"><a class="UniqueItems UniqueItem" data-hover="h" href="${slug}">` +
+    `<img loading="lazy" src="${icon}" alt="x" class="w2" /></a></div>` +
+    `<div class="flex-grow-1 ms-2"><div><a class="UniqueItem" data-hover="h" href="/us/${slug}">` +
+    `<span class="uniqueName">${name}</span> <span class="uniqueTypeLine">${typeLine}</span></a></div></div>`;
+
+  it('extracts slug/name/base-typeLine and resolves the icon URL from real unique cards', () => {
+    const html =
+      uniq(
+        'Brynhands_Mark',
+        "Brynhand's Mark",
+        'Wooden Club',
+        'https://cdn.poe2db.tw/image/Art/2DItems/Weapons/OneHandWeapons/OneHandMaces/Uniques/BrynhandsMark.webp',
+      ) + uniq('Frostbreath', 'Frostbreath', 'Crackling Mace', '/image/x.webp');
+    const cards = parseUniqueCards(html);
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toMatchObject({
+      slug: 'Brynhands_Mark',
+      name: "Brynhand's Mark",
+      desc: 'Wooden Club', // base type line carried as the description
+    });
+    expect(cards[0].iconUrl).toBe(
+      'https://cdn.poe2db.tw/image/Art/2DItems/Weapons/OneHandWeapons/OneHandMaces/Uniques/BrynhandsMark.webp',
+    );
+    expect(cards[1].iconUrl).toBe('https://cdn.poe2db.tw/image/x.webp'); // relative → absolute
+  });
+
+  it('returns [] for HTML without unique cards (so the collector can fail loud on 0)', () => {
+    expect(parseUniqueCards('<div>no uniques here</div>')).toEqual([]);
   });
 });
 

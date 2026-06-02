@@ -30,6 +30,11 @@ export const DOMAINS = {
   keyword: { path: 'Keywords', termDomain: 'keyword', parse: parsePoe2dbCards },
   skill: { path: 'Skill_Gems', termDomain: 'skill', parse: parseFigureCards },
   support_gem: { path: 'Support_Gems', termDomain: 'support_gem', parse: parseFigureCards },
+  // Spirit gems are active skill gems that reserve Spirit (auras/heralds/minions). DESIGN §8.3's
+  // domain vocabulary has no separate `spirit_gem`, so they map onto `skill` (their mechanical
+  // class) — verified disjoint from the Skill_Gems slug set, so no id collisions.
+  spirit_gem: { path: 'Spirit_Gems', termDomain: 'skill', parse: parseFigureCards },
+  unique: { path: 'Unique_item', termDomain: 'unique', parse: parseUniqueCards },
 };
 
 const ENTITIES = {
@@ -62,11 +67,15 @@ export function parsePoe2dbCards(html) {
     /<div class="flex-shrink-0">(.*?)<\/div>\s*<div class="flex-grow-1 ms-2">\s*<a href="([^"]+)" class="strong fontinSmallCaps">([^<]+)<\/a>\s*<div class="fontinRegular">(.*?)<\/div>/gs;
   const iconRe = /<img[^>]+src="([^"]+)"/;
   const cards = [];
+  const seen = new Set();
   for (const m of html.matchAll(cardRe)) {
     const [, iconHtml, slug, name, descHtml] = m;
+    const s = decode(slug).trim();
+    if (seen.has(s)) continue; // the Keywords page repeats some entries across sections; keep first
+    seen.add(s);
     const icon = iconRe.exec(iconHtml);
     cards.push({
-      slug: decode(slug).trim(),
+      slug: s,
       name: stripTags(name),
       desc: stripTags(descHtml),
       iconUrl: icon ? (icon[1].startsWith('http') ? icon[1] : ICON_CDN + icon[1]) : undefined,
@@ -96,6 +105,35 @@ export function parseFigureCards(html) {
       slug: s,
       name: stripTags(name),
       desc: '',
+      iconUrl: icon.startsWith('http') ? icon : ICON_CDN + icon,
+    });
+  }
+  return cards;
+}
+
+/**
+ * Parse a PoE2DB /us/Unique_item list page. Each unique is an image-anchor (slug + icon)
+ * followed by a name-anchor carrying the localized name and base type line:
+ *   <a class="UniqueItems UniqueItem" ... href="SLUG"><img ... src="ICON" ...></a> ...
+ *   <a class="UniqueItem" ... href="/us/SLUG">
+ *     <span class="uniqueName">NAME</span> <span class="uniqueTypeLine">BASE TYPE</span>
+ * The base type line is carried as `desc` (a useful bilingual alias). Returns
+ * [{ slug, name, desc, iconUrl }], deduped by slug. Pure — no I/O.
+ */
+export function parseUniqueCards(html) {
+  const cardRe =
+    /<a class="UniqueItems UniqueItem"[^>]*href="([^"]+)">\s*<img[^>]*src="([^"]+)"[^>]*>.*?<span class="uniqueName">(.*?)<\/span>\s*<span class="uniqueTypeLine">(.*?)<\/span>/gs;
+  const cards = [];
+  const seen = new Set();
+  for (const m of html.matchAll(cardRe)) {
+    const [, slugRaw, icon, name, typeLine] = m;
+    const slug = decode(slugRaw).trim();
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    cards.push({
+      slug,
+      name: stripTags(name),
+      desc: stripTags(typeLine),
       iconUrl: icon.startsWith('http') ? icon : ICON_CDN + icon,
     });
   }
