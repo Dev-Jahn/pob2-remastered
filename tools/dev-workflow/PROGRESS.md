@@ -13,9 +13,8 @@
 - Phase 1: ✓ done — squash-merged to `main` (8fb171e), pushed
 - Phase 2: ✓ done — squash-merged to `main` (c2e43b9), pushed
 - Phase 3: ✓ done — squash-merged to `main` (6800500), pushed; **core-bridge CARRYOVER resolved** (app runs core over Tauri IPC); equip-delta fake-feature caught+fixed by review
-- Phase 4: ✓ done (gate-green sign-off) on `feat/phase-4-skills-config-calcs` — `run-gate 4` green
-  (5/5 required, exit 0), `gates.mjs`/`phases.mjs` unmodified; awaiting squash-merge to `main`
-- Current phase: **5** (Passive Tree) — pending
+- Phase 4: ✓ done — squash-merged to `main` (0459ed0), pushed; review fixed a real config-preset var bug
+- Current phase: **5** (Passive Tree) — in progress on `feat/phase-5-passive-tree`
 - Env: Rust toolchain provisioned (cargo 1.96, user-space `~/.cargo`, reachable in login shell);
   `webkit2gtk-4.1` dev libs already present → Tauri buildable; Playwright chromium present → visual gates live
 - TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in
@@ -25,16 +24,16 @@
 
 ## Phase ledger
 
-| Phase | Status  | Gate evidence                                                             | 🚩Flags | Blockers |
-| ----- | ------- | ------------------------------------------------------------------------- | ------- | -------- |
-| 0     | done    | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
-| 1     | done    | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
-| 2     | done    | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
-| 3     | done    | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
-| 4     | done    | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below | 1       |          |
-| 5     | pending |                                                                           |         |          |
-| 6     | pending |                                                                           |         |          |
-| 7     | pending |                                                                           |         |          |
+| Phase | Status      | Gate evidence                                                             | 🚩Flags | Blockers |
+| ----- | ----------- | ------------------------------------------------------------------------- | ------- | -------- |
+| 0     | done        | `run-gate 0` pass; gates+exit codes recorded below                        | 1       |          |
+| 1     | done        | `run-gate 1` pass (7/7 required, exit 0); below                           |         |          |
+| 2     | done        | `run-gate 2` pass (8/8); visual verified by direct vision; below          | 2       |          |
+| 3     | done        | `run-gate 3` pass (6/6 required, exit 0); `/items` visual verified; below | 1       |          |
+| 4     | done        | `run-gate 4` pass (5/5 required, exit 0); `/calcs` visual verified; below | 1       |          |
+| 5     | in progress |                                                                           |         |          |
+| 6     | pending     |                                                                           |         |          |
+| 7     | pending     |                                                                           |         |          |
 
 ## Phase 0 gate evidence (task `p0-gate-green`)
 
@@ -311,6 +310,12 @@ stages it in the Items inspector, and switches to the Items tab (`apps/desktop/s
 ## 🚩 Flag log
 
 _(human-gate decisions made autonomously — review later)_
+
+- **p4/skills-tab-read-only** (Phase 4 review, UI wiring) — `App.tsx` renders `SkillsPanel` without
+  the `onToggleGem`/`onToggleGroup` mutation callbacks, so in-app gem/support toggling is a no-op.
+  The core path (`skills.setGemGroup`) and `SkillsPanel` callback props both work and are tested; only
+  the App-level wiring is missing. Phase 4's build-mutation doneCriteria is satisfied via the fully
+  wired config-preset flow. Wire skill-toggle callbacks when the Skills tab gets interactive polish.
 
 - **p4-gate-green carryover/ledger (Phase 4 sign-off)** — At the Phase 4 freeze (`run-gate 4` green,
   5/5 required at exit 0, `gates.mjs`+`phases.mjs` unmodified) the open flags below are **carried
