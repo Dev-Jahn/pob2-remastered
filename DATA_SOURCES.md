@@ -3,6 +3,21 @@
 This document tracks where data and assets come from and how they may be used.
 See `DESIGN.md` §9 and §15 for the full rationale.
 
+## ⚠️ Policy update (2026-06-02)
+
+The maintainer completed a **legal review** for this **non-commercial / non-profit**
+fork and **authorized bundling** of localization data and Path of Exile 2 icon/image
+assets into the app and release packaging. This **supersedes the `do_not_bundle`
+default** that `DESIGN.md` §9.3 / §15 originally specified pending review.
+
+The sections below are retained for provenance. Where they read "`do_not_bundle`" /
+"not bundled", the current policy is: **assets are collected (rate-limited, cached,
+attributed) and bundled into the app + release artifacts, with attribution surfaced
+in-app and in `NOTICE.md`.** Grinding Gear Games retains all rights to PoE / PoE 2
+content; this fork includes that content under a **non-commercial fan-project**
+rationale with full attribution. _(Status: the collection/bundling pipeline is in
+progress; the committed dictionary currently holds only sample terms.)_
+
 ## 1. Path of Building 2 (vendored)
 
 - **Source:** https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
@@ -22,11 +37,13 @@ See `DESIGN.md` §9 and §15 for the full rationale.
 
 ## 3. GGG / Path of Exile assets (icons, images)
 
-- **Owner:** Grinding Gear Games.
-- **Policy:** Default `do_not_bundle`. Item/skill icons are referenced remotely
-  with user-side cache; offline asset packs require prior legal review
-  (`DESIGN.md` §9.3). Users can disable external image loading.
-- **Attribution:** Surfaced in Settings → About → Data/Image sources.
+- **Owner:** Grinding Gear Games. All PoE / PoE 2 names, graphics, and icons remain GGG's.
+- **Policy (updated 2026-06-02 — see top):** After the maintainer's legal review for this
+  non-commercial fork, icons/images **may be collected (rate-limited, attributed) and
+  bundled** into the app + release artifacts. An `AssetRef` manifest (`DESIGN.md` §9.2)
+  records source URL, hash, and attribution for each bundled asset. Users may still disable
+  external image loading; the local cache + bundle is the default.
+- **Attribution:** Surfaced in Settings → About → Data/Image sources, and in `NOTICE.md`.
 
 ## 4. lua-utf8 (native runtime dependency)
 
@@ -68,10 +85,12 @@ and §15.2–§15.3 (legal policy).
   - **No unbounded runtime scraping** — the shipped app performs no scraping; there
     is no app-runtime crawl loop. Dictionary refresh is an offline, bounded,
     developer-run import — not a background job.
-- **§15.2 GGG-asset boundary:** Icons/images surfaced via PoE2DB remain GGG-owned.
-  They stay `do_not_bundle` by default (`DESIGN.md` §9.3): referenced remotely with
-  user-side cache, never packaged, pending separate legal review. The importer only
-  records icon `remoteUrl`/attribution; it bundles no image bytes.
+- **§15.2 GGG-asset boundary (updated 2026-06-02):** Icons/images surfaced via PoE2DB
+  remain GGG-owned. Following the maintainer's legal review for this non-commercial fork,
+  they **may be cached and bundled** with full attribution (`AssetRef` manifest records
+  `remoteUrl` / `sha256` / attribution per asset). This supersedes the prior
+  `do_not_bundle` default; GGG's rights are unchanged and attribution travels with each
+  release.
 - **Where the generated artifacts live:**
   - Generated dictionary: `packages/localization/generated/dictionary.json`
     (deterministic output of `scripts/build-dictionary.mjs`; `source: generated`,
