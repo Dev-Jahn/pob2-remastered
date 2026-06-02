@@ -65,6 +65,7 @@ import type {
   CalcExplainResponse,
   CalcRunResponse,
   ConfigGetOptionsResponse,
+  GemInput,
   SkillsGetGroupsResponse,
   TreeStatDelta,
 } from '@pob2/schema';
@@ -290,6 +291,31 @@ export function App({
     [session, build],
   );
 
+  // §10.5 gem enable toggle: flip ONE gem's enabled in its socket group, re-sending the
+  // group's gems in their ORIGINAL order (skills.setGemGroup source `gems`) so the toggle
+  // never reorders the group — then RE-RUN calc.run (DESIGN §6.3 빌드 수정 → 즉시 재계산),
+  // refresh the Overview/Calcs + the socket-group cards, and clear stale traces. The
+  // pre-mutation stats become the §10.7 before/after baseline.
+  const toggleGem = useCallback(
+    async (groupId: string, gemId: string) => {
+      if (!session) return;
+      const group = skillGroups.groups.find((g) => g.groupId === groupId);
+      if (!group) return;
+      const gems: GemInput[] = group.gems.map((gem) => ({
+        gemId: gem.gemId,
+        level: gem.level,
+        quality: gem.quality,
+        enabled: gem.gemId === gemId ? !gem.enabled : gem.enabled,
+      }));
+      setPrevStats(build?.stats ?? EMPTY_CALC);
+      const stats = await session.setGemGroup(groupId, gems);
+      setBuild((current) => (current ? { ...current, stats } : current));
+      setSkillGroups(await session.getSkillGroups());
+      setCalcExplains(new Map());
+    },
+    [session, build, skillGroups],
+  );
+
   // §10.7 lazy calc.explain: fetch one stat's formula trace through the session and
   // stage it for the Calcs breakdown. Already-loaded traces are not refetched (the
   // CalcsPanel debounces and suppresses those), so this only adds new ones. Shared
@@ -356,6 +382,22 @@ export function App({
     [session, build],
   );
 
+  // §11.1 "아이템 붙여넣기": read clipboard text, parse it through the session, stage the
+  // result in the Items inspector, and switch to the Items tab. Lifted to a callback so
+  // BOTH the Ctrl+K command AND the §10.4 Items toolbar Import button drive the same flow.
+  // Reads the system clipboard unless a resolver is injected; empty/aborted reads do
+  // nothing (NO-FALLBACK — no blank item).
+  const pasteItem = useCallback(async () => {
+    if (!session) return;
+    const text = resolveClipboardText
+      ? await resolveClipboardText()
+      : await navigator.clipboard.readText();
+    if (!text) return;
+    const { item } = await session.parseClipboard(text);
+    setPastedItem(item);
+    selectTab('items');
+  }, [session, resolveClipboardText, selectTab]);
+
   // §11.1 build commands: one "go to tab" command per nav entry. titleKo/titleEn
   // are sourced from both locale dictionaries so the §11.2 bilingual search index
   // resolves either language regardless of the active UI locale (§8.1 alias never
@@ -404,20 +446,6 @@ export function App({
     const save = async (format: SaveFormat) => {
       const result = await session.save({ format });
       if (deliverSaveResult) await deliverSaveResult(result);
-    };
-
-    // §11.1 "아이템 붙여넣기": read clipboard text, parse it through the session,
-    // stage the result in the Items inspector, and switch to the Items tab so the
-    // pasted item is visible. Reads the system clipboard unless a resolver is
-    // injected. Empty/aborted reads do nothing (NO-FALLBACK — no blank item).
-    const pasteItem = async () => {
-      const text = resolveClipboardText
-        ? await resolveClipboardText()
-        : await navigator.clipboard.readText();
-      if (!text) return;
-      const { item } = await session.parseClipboard(text);
-      setPastedItem(item);
-      selectTab('items');
     };
 
     return [
@@ -470,7 +498,7 @@ export function App({
         run: () => selectTab('calcs'),
       },
     ];
-  }, [session, resolveOpenSource, resolveClipboardText, deliverSaveResult, selectTab]);
+  }, [session, resolveOpenSource, resolveClipboardText, deliverSaveResult, selectTab, pasteItem]);
 
   // The workspace pane is routed by the active tab (DESIGN §10.2): Items renders
   // the §10.4 ItemsPanel, Skills the §10.5 SkillsPanel, Config the §10.8
@@ -487,9 +515,14 @@ export function App({
         itemSets={[{ id: 'default', name: stringsKo['items.set.default'] }]}
         activeSetId="default"
         inspectedItem={pastedItem}
+        onImportFromClipboard={() => void pasteItem()}
       />
     ) : activeTab === 'skills' ? (
-      <SkillsPanel locale={locale} model={skills} />
+      <SkillsPanel
+        locale={locale}
+        model={skills}
+        onToggleGem={(groupId, gemId) => void toggleGem(groupId, gemId)}
+      />
     ) : activeTab === 'config' ? (
       <ConfigPanel
         locale={locale}

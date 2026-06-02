@@ -97,15 +97,23 @@ export function ItemsPanel(props: ItemsPanelProps) {
           activeSetId={activeSetId}
           onChange={props.onChangeSet}
         />
-        <button type="button" className="pob-items__tool" onClick={props.onImportFromClipboard}>
-          {t(locale, 'items.importFromClipboard')}
-        </button>
-        <button type="button" className="pob-items__tool" onClick={props.onCraft}>
-          {t(locale, 'items.craft')}
-        </button>
-        <button type="button" className="pob-items__tool" onClick={props.onTrade}>
-          {t(locale, 'items.trade')}
-        </button>
+        {/* Render each toolbar action ONLY when the host wired its callback, so an
+            unimplemented action (Craft/Trade) shows no dead button (review follow-up). */}
+        {props.onImportFromClipboard && (
+          <button type="button" className="pob-items__tool" onClick={props.onImportFromClipboard}>
+            {t(locale, 'items.importFromClipboard')}
+          </button>
+        )}
+        {props.onCraft && (
+          <button type="button" className="pob-items__tool" onClick={props.onCraft}>
+            {t(locale, 'items.craft')}
+          </button>
+        )}
+        {props.onTrade && (
+          <button type="button" className="pob-items__tool" onClick={props.onTrade}>
+            {t(locale, 'items.trade')}
+          </button>
+        )}
       </div>
 
       <div className="pob-items__regions">

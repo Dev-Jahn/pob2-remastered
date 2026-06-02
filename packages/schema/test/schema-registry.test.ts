@@ -284,6 +284,7 @@ describe('skills.getGroups SkillGroupCard shape is pinned by schema (DESIGN §10
         'enabled',
         'spirit',
         'reservation',
+        'gems',
         'activeGems',
         'supportGems',
       ]),
@@ -294,6 +295,7 @@ describe('skills.getGroups SkillGroupCard shape is pinned by schema (DESIGN §10
     expect(prop(card, 'enabled').type).toBe('boolean');
     expect(prop(card, 'spirit').type).toBe('number');
     expect(prop(card, 'reservation').type).toBe('number');
+    expect(prop(card, 'gems').type).toBe('array');
     expect(prop(card, 'activeGems').type).toBe('array');
     expect(prop(card, 'supportGems').type).toBe('array');
   });
@@ -393,6 +395,7 @@ describe('new skills/config/calc methods validate sample payloads (AJV behaviour
     enabled: true,
     spirit: 0,
     reservation: 0,
+    gems: [sampleGem],
     activeGems: [sampleGem],
     supportGems: [],
   };

@@ -128,15 +128,19 @@ export function SkillGroupCard(props: SkillGroupCardProps) {
       data-selected={selected ? 'true' : undefined}
     >
       <header className="pob-skill-group__head">
-        <label className="pob-skill-group__enabled">
-          <span className="pob-visually-hidden">{t(locale, 'skills.group.enabled')}</span>
-          <input
-            type="checkbox"
-            data-group-toggle
-            checked={card.enabled}
-            onChange={() => props.onToggleGroup?.(groupId)}
-          />
-        </label>
+        {/* Render the group-enable toggle ONLY when the host wired onToggleGroup, so an
+            unimplemented group-enable shows no dead checkbox (review follow-up). */}
+        {props.onToggleGroup && (
+          <label className="pob-skill-group__enabled">
+            <span className="pob-visually-hidden">{t(locale, 'skills.group.enabled')}</span>
+            <input
+              type="checkbox"
+              data-group-toggle
+              checked={card.enabled}
+              onChange={() => props.onToggleGroup?.(groupId)}
+            />
+          </label>
+        )}
         <button
           type="button"
           className="pob-skill-group__select"

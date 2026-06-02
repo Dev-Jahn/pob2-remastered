@@ -357,12 +357,16 @@ describe('ItemsPanel (DESIGN §10.4 3-region layout)', () => {
     expect(screen.getByText(t('ko-KR', 'items.inspector'))).toBeTruthy();
   });
 
-  it('renders the header toolbar: item-set selector + clipboard import + craft + trade', () => {
-    render(<ItemsPanel {...props} />);
+  it('renders a toolbar action ONLY when its callback is provided (no dead buttons)', () => {
+    const onImportFromClipboard = vi.fn();
+    render(<ItemsPanel {...props} onImportFromClipboard={onImportFromClipboard} />);
     expect(screen.getByLabelText(t('ko-KR', 'items.set.label'))).toBeTruthy();
-    expect(screen.getByText(t('ko-KR', 'items.importFromClipboard'))).toBeTruthy();
-    expect(screen.getByText(t('ko-KR', 'items.craft'))).toBeTruthy();
-    expect(screen.getByText(t('ko-KR', 'items.trade'))).toBeTruthy();
+    // Import is wired → its button renders and fires.
+    fireEvent.click(screen.getByText(t('ko-KR', 'items.importFromClipboard')));
+    expect(onImportFromClipboard).toHaveBeenCalledTimes(1);
+    // Craft / Trade have no callback → no dead button is rendered (review follow-up).
+    expect(screen.queryByText(t('ko-KR', 'items.craft'))).toBeNull();
+    expect(screen.queryByText(t('ko-KR', 'items.trade'))).toBeNull();
   });
 
   it('renders one equipped-grid card per canonical slot (occupied + empty)', () => {

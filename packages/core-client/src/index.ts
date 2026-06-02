@@ -680,6 +680,8 @@ function toSkillGroupCard(value: unknown): SkillGroupCard {
     spirit: typeof group.spirit?.reserved === 'number' ? group.spirit.reserved : 0,
     reservation:
       typeof group.reservation?.mana?.reserved === 'number' ? group.reservation.mana.reserved : 0,
+    // Order-preserving full gem list (the wire order), the skills.setGemGroup source.
+    gems: (group.gems ?? []).map(toSkillGemRef),
     activeGems,
     supportGems,
   };

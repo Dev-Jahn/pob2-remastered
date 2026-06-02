@@ -87,6 +87,9 @@ const SAMPLE_GROUPS: SkillsGetGroupsResponse = {
       enabled: true,
       spirit: 0,
       reservation: 0,
+      gems: [
+        { gemId: 'SkillGemMaceStrike', name: 'Mace Strike', level: 1, quality: 0, enabled: true },
+      ],
       activeGems: [
         { gemId: 'SkillGemMaceStrike', name: 'Mace Strike', level: 1, quality: 0, enabled: true },
       ],

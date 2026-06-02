@@ -19,32 +19,33 @@ components are real and tested, but **production UX wiring is partial**.
 | P2  | Empty passive tree → `Infinity`/`NaN` minimap bounds             | `treeResponseToGraph` returns a finite zero rect for an empty tree. `tree-bounds.test.ts`                                                          |
 | —   | Systemic gap                                                     | `App.wiring.test.tsx` renders the **production App composition** and asserts the wiring exists, so these dead-ends fail CI if they regress         |
 
-## Remaining (honest punch-list — needs data-model work, not just prop-passing)
+## Data-model P1 — now fixed (branch `feat/p1-data-model-wiring`, with tests)
 
-These are **deliberately deferred** rather than half-wired (a reordered gem list or a
-fabricated library item would be a worse "broken middle state"). Each needs a real
-data-model change:
+- **Skills gem toggle ✅.** `SkillGroupCard` now carries an order-preserving `gems` list (both
+  assemblers populate it from the ordered wire list); `App.toggleGem` rebuilds `GemInput[]` in
+  ORIGINAL order with one `enabled` flipped → `setGemGroup` → recompute. `App.skills-toggle.test`
+  guards order preservation; verified vs the real runner.
+- **Items toolbar ✅.** `App` wires `onImportFromClipboard` to the paste flow; `ItemsPanel` renders
+  each toolbar action ONLY when its callback is provided, so Craft/Trade (unimplemented) show no
+  dead button (and no `createCustom` path).
+- **Skills group-enable control ✅ (dead control removed).** `SkillGroupCard` renders the
+  group-enable checkbox ONLY when `onToggleGroup` is wired — no dead checkbox. The backing
+  `skills.setGroupEnabled` method is deferred (see below).
 
-- **Skills gem toggle (P1).** `onToggleGem` cannot be wired cleanly today: `skills.getGroups`
-  splits gems into `activeGems`/`supportGems` and **loses the original gem order** that
-  `skills.setGemGroup` needs — reconstructing would reorder gems (a real calc bug). Fix:
-  carry the original combined gem order (or per-gem index) in the `SkillGroupCard` model so
-  `App` can rebuild the `GemInput[]` with the toggled gem flipped, then `setGemGroup` →
-  recompute. Same for the skill **inspector breakdown** (needs per-skill damage data).
-- **Skills group enable toggle (P1).** `onToggleGroup` needs a `skills.setGroupEnabled`
-  runner method (no current Core API method maps to a group-level enable). Add method +
-  schema + allowlist + UI wiring, or hide the group-enable control until then.
-- **Items library + selection (P1).** `LibraryItem` is a search _summary_, not a full
-  `InspectedItem` (no mod data), so a library-row click cannot resolve to the inspector.
-  Fix: a library item store carrying full item detail (or an `onSelectLibraryItem` →
-  host-fetch detail), plus a live `library`/shared-item scope feeding `ItemsPanel`.
-- **Items toolbar buttons (P1).** Paste works via the Ctrl+K "아이템 붙여넣기" command, but the
-  toolbar Import button is inert and Craft/Trade render with no handler. Fix: wire
-  `onImportFromClipboard` to the paste flow and **hide** Craft/Trade until implemented
-  (render toolbar buttons only when their callback is provided).
-- **`items.createCustom` (P1).** The IPC client method exists but the runner / Rust allowlist
-  reject it — it is **not reachable from any UI action** today. Keep it deferred (do not wire
-  a Craft entry to it); implement runner + schema + allowlist + UI together when built.
+## Remaining (larger new features — tracked, not half-wired)
+
+- **`skills.setGroupEnabled` (group enable/disable).** Needs a new runner method (set
+  `socketGroup.enabled` + recalc) + schema + allowlist + client/session + App `onToggleGroup`.
+  Mechanical (mirrors `skills.setGemGroup`) but a full new RPC; the dead control is hidden until then.
+- **Skill inspector breakdown.** The §10.5 selected-skill damage/support/gem-delta breakdown needs
+  per-skill calc data (a new explain-like method or richer `skills.getGroups`). Deferred.
+- **Items library + selection.** `LibraryItem` is a search _summary_, not a full `InspectedItem`
+  (no mod data), so a library-row click cannot resolve to the inspector. Needs a library item store
+  carrying full detail (or an `onSelectLibraryItem` → host-fetch detail) + a live library/shared-item
+  scope feeding `ItemsPanel`. Deferred (new feature).
+- **`items.createCustom`.** IPC client method exists but the runner/allowlist reject it; it is **not
+  reachable from any UI action** (Craft is hidden). Implement runner + schema + allowlist + UI
+  together when built. Deferred.
 
 ## Phase-claim correction
 

@@ -98,6 +98,15 @@ const validResponses: Record<string, unknown> = {
         enabled: true,
         spirit: 0,
         reservation: 0,
+        gems: [
+          {
+            gemId: 'MeleeMaceMacePlayer',
+            name: 'Mace Strike',
+            level: 1,
+            quality: 0,
+            enabled: true,
+          },
+        ],
         activeGems: [
           {
             gemId: 'MeleeMaceMacePlayer',

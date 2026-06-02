@@ -126,9 +126,16 @@ export interface SkillGroupCard {
   spirit: number;
   /** Mana/life reservation of this group (DESIGN §10.5). */
   reservation: number;
-  /** Active (skill) gems in the group. */
+  /**
+   * The group's gems in their ORIGINAL socket order (active + support, as the build
+   * stores them). `activeGems`/`supportGems` are display splits of this; `gems` is the
+   * order-preserving source skills.setGemGroup needs so a per-gem toggle re-sends the
+   * SAME ordered list (flipping one `enabled`) and never reorders the group.
+   */
+  gems: SkillGemRef[];
+  /** Active (skill) gems in the group (display split of `gems`). */
   activeGems: SkillGemRef[];
-  /** Support gems in the group. */
+  /** Support gems in the group (display split of `gems`). */
   supportGems: SkillGemRef[];
 }
 

@@ -171,14 +171,22 @@ describe('GemRow (DESIGN §10.5 gem chip)', () => {
 // ---------------------------------------------------------------------------
 
 describe('SkillGroupCard (DESIGN §10.5 skill group card)', () => {
-  it('renders the group label and the group enabled toggle reflecting its state', () => {
-    const { container } = render(<SkillGroupCard locale="ko-KR" card={MAIN_CARD} />);
+  it('renders the group-enable toggle only when wired — reflecting state and firing onToggleGroup', () => {
+    const onToggleGroup = vi.fn();
+    const { container, rerender } = render(
+      <SkillGroupCard locale="ko-KR" card={MAIN_CARD} onToggleGroup={onToggleGroup} />,
+    );
     // The group label rides the selectable head control (the active gem of the same
     // name renders separately as a gem chip).
     const select = container.querySelector('[data-skill-group-select]') as HTMLElement;
     expect(select.textContent).toBe('Fireball');
     const groupToggle = container.querySelector('[data-group-toggle]') as HTMLInputElement;
-    expect(groupToggle.checked).toBe(true);
+    expect(groupToggle.checked).toBe(true); // reflects card.enabled
+    fireEvent.click(groupToggle);
+    expect(onToggleGroup).toHaveBeenCalledTimes(1);
+    // Without a handler, the dead group-enable toggle is not rendered (review follow-up).
+    rerender(<SkillGroupCard locale="ko-KR" card={MAIN_CARD} />);
+    expect(container.querySelector('[data-group-toggle]')).toBeNull();
   });
 
   it('shows the reservation and spirit cost immediately (DESIGN §10.5)', () => {

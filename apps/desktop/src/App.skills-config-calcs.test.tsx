@@ -57,6 +57,7 @@ const SKILL_GROUPS: SkillsGetGroupsResponse = {
       enabled: true,
       spirit: 0,
       reservation: 0,
+      gems: [{ gemId: 'fireball', name: 'Fireball', level: 20, quality: 0, enabled: true }],
       activeGems: [{ gemId: 'fireball', name: 'Fireball', level: 20, quality: 0, enabled: true }],
       supportGems: [],
     },

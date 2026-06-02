@@ -177,13 +177,24 @@ const skillGemRefSchema = {
  */
 const skillGroupCardSchema = {
   type: 'object',
-  required: ['groupId', 'label', 'enabled', 'spirit', 'reservation', 'activeGems', 'supportGems'],
+  required: [
+    'groupId',
+    'label',
+    'enabled',
+    'spirit',
+    'reservation',
+    'gems',
+    'activeGems',
+    'supportGems',
+  ],
   properties: {
     groupId: { type: 'string' },
     label: { type: 'string' },
     enabled: { type: 'boolean' },
     spirit: { type: 'number' },
     reservation: { type: 'number' },
+    // Order-preserving full gem list (skills.setGemGroup source).
+    gems: { type: 'array', items: skillGemRefSchema },
     activeGems: { type: 'array', items: skillGemRefSchema },
     supportGems: { type: 'array', items: skillGemRefSchema },
   },
