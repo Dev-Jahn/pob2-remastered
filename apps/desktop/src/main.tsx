@@ -21,6 +21,7 @@ import '@pob2/ui/styles.css';
 import { App } from './App.js';
 import { createBuildSession } from './build-session.js';
 import { createIpcCoreClient } from './core-ipc-client.js';
+import { createOpenSourceResolver, createSaveDeliverer } from './host-bridge.js';
 
 const container = document.getElementById('root');
 if (!container) {
@@ -32,8 +33,15 @@ if (!container) {
 // host (DESIGN §5.1 the host owns the runner).
 const session = createBuildSession(createIpcCoreClient());
 
+// Wire the host hooks so Open and Save/Export actually work in the shipped app
+// (DESIGN §10.9): Open picks + reads a build file, Save writes XML to a download and
+// copies a share code to the clipboard. Without these the commands would be no-ops.
 createRoot(container).render(
   <StrictMode>
-    <App session={session} />
+    <App
+      session={session}
+      resolveOpenSource={createOpenSourceResolver()}
+      deliverSaveResult={createSaveDeliverer()}
+    />
   </StrictMode>,
 );

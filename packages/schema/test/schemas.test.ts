@@ -37,28 +37,6 @@ function errorKeywords(errors: ErrorObject[] | null | undefined): string[] {
 // Sample payloads
 // ---------------------------------------------------------------------------
 
-const validBuildState = {
-  schemaVersion: 1,
-  id: 'b-1',
-  name: 'Test Build',
-  classId: 'Witch',
-  level: 90,
-  itemSets: [],
-  skillSets: [],
-  passiveSpecs: [],
-  configSets: [],
-  activeItemSetId: 'is-1',
-  activeSkillSetId: 'ss-1',
-  activePassiveSpecId: 'ps-1',
-  activeConfigSetId: 'cs-1',
-  metadata: {
-    upstreamCommit: 'abc123',
-    createdAt: '2026-06-01T00:00:00Z',
-    updatedAt: '2026-06-01T00:00:00Z',
-    locale: 'ko-KR',
-  },
-};
-
 const validEquippedItem = {
   slot: 'Weapon 1',
   itemId: '17',
@@ -87,7 +65,7 @@ const validRequests: Record<string, unknown> = {
 };
 
 const validResponses: Record<string, unknown> = {
-  'build.load': { buildId: 'b-1', state: validBuildState },
+  'build.load': { buildId: 'b-1', summary: { className: 'Ranger', level: 1 } },
   'build.save': { format: 'xml', data: '<PathOfBuilding/>' },
   'calc.run': {
     buildId: 'b-1',

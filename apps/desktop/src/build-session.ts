@@ -292,8 +292,15 @@ export function treeResponseToGraph(response: TreeGetDataResponse): TreeDataResu
     if (node.y > maxY) maxY = node.y;
   }
 
+  // An empty tree (no nodes) leaves the bounds at their Infinity seeds, which would
+  // make the §10.6 minimap fit compute `maxX - minX = -Infinity`/`NaN`. Collapse to a
+  // zero rect so the minimap renders a safe empty viewport (NO-FALLBACK: real bounds
+  // when there are nodes, an honest zero rect when there are none).
+  const bounds =
+    nodes.length === 0 ? { minX: 0, minY: 0, maxX: 0, maxY: 0 } : { minX, minY, maxX, maxY };
+
   return {
-    graph: { nodes, edges, bounds: { minX, minY, maxX, maxY }, nodeIndex },
+    graph: { nodes, edges, bounds, nodeIndex },
     allocated: new Set(response.allocatedNodeIds),
   };
 }

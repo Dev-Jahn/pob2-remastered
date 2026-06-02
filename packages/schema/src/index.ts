@@ -49,6 +49,7 @@ export type {
   BuildPatch,
   BuildLoadRequest,
   BuildLoadResponse,
+  BuildSummary,
   BuildSaveRequest,
   BuildSaveResponse,
   CalcRunRequest,

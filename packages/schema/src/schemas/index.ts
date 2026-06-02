@@ -41,7 +41,7 @@ const DRAFT = 'https://json-schema.org/draft/2020-12/schema';
 // Shared fragments
 // ----------------------------------------------------------------------------
 
-const buildStateSchema = {
+export const buildStateSchema = {
   type: 'object',
   description: 'BuildState (DESIGN §12.1). MVP keeps nested set payloads loose.',
   required: [
@@ -355,15 +355,33 @@ const buildLoadRequestSchema = {
   additionalProperties: false,
 } as const satisfies JSONSchema;
 
+// build.load returns the runner's lightweight build SUMMARY (Overview header
+// fields), not a full BuildState — so the response is validated against this summary
+// shape (code-review fix: align the contract to reality + re-enable response
+// validation instead of a `validateResponse:false` bypass). Fields optional + typed;
+// the runner may carry extras (no additionalProperties:false). The full
+// `buildStateSchema` stays exported for a future `build.getState`.
+const buildSummarySchema = {
+  type: 'object',
+  properties: {
+    className: { type: 'string' },
+    ascendancyName: { type: 'string' },
+    level: { type: 'number' },
+    itemCount: { type: 'number' },
+  },
+} as const satisfies JSONSchema;
+
 const buildLoadResponseSchema = {
   $schema: DRAFT,
   $id: 'pob2:build.load:response',
   title: 'BuildLoadResponse',
   type: 'object',
-  required: ['buildId', 'state'],
+  // Only buildId is guaranteed; summary is the best-effort Overview header (the
+  // clients treat an absent summary as {}), so it is validated-when-present, not required.
+  required: ['buildId'],
   properties: {
     buildId: { type: 'string' },
-    state: buildStateSchema,
+    summary: buildSummarySchema,
   },
   additionalProperties: false,
 } as const satisfies JSONSchema;

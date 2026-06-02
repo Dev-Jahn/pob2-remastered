@@ -61,6 +61,7 @@ import type {
   TreeGraph,
 } from '@pob2/ui';
 import type {
+  BuildSaveResponse,
   CalcExplainResponse,
   CalcRunResponse,
   ConfigGetOptionsResponse,
@@ -157,9 +158,21 @@ export interface AppProps {
    * tests can inject a fixed string. Returns `null`/empty to abort the paste.
    */
   resolveClipboardText?: () => Promise<string | null>;
+  /**
+   * Where the Save/Export commands SEND the exported build (DESIGN §10.9, §11.1
+   * "빌드 내보내기"): the host writes XML to a file (Tauri save dialog →
+   * `save_build_file`) and copies a share code to the clipboard. Without it the
+   * Save commands are unavailable (not faked) — so the desktop entry MUST inject it.
+   */
+  deliverSaveResult?: (result: BuildSaveResponse) => void | Promise<void>;
 }
 
-export function App({ session, resolveOpenSource, resolveClipboardText }: AppProps = {}) {
+export function App({
+  session,
+  resolveOpenSource,
+  resolveClipboardText,
+  deliverSaveResult,
+}: AppProps = {}) {
   const [locale, setLocale] = useState<Locale>('ko-KR');
   // The active tab is seeded from the initial URL path so the VISUAL gate's
   // `/items`/`/calcs`/`/tree` routes open straight onto that screen (§10.2).
@@ -253,6 +266,24 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
       if (stats !== undefined) {
         setBuild((current) => (current ? { ...current, stats } : current));
       }
+      setConfigOptions(await session.getConfigOptions());
+      setCalcExplains(new Map());
+    },
+    [session, build],
+  );
+
+  // §10.8 individual config option edit: write ONE option through config.setOption —
+  // which RE-RUNS calc.run (DESIGN §6.3 빌드 수정 → 즉시 재계산) — then refresh the
+  // Overview/Calcs from the recomputed stats and re-fetch the config options (the
+  // edited value, and any dependent options, changed). The pre-mutation stats become
+  // the §10.7 before/after baseline; stale calc.explain traces are cleared. This is
+  // the per-option counterpart of applyConfigPreset, wired to ConfigPanel.onChangeOption.
+  const applyConfigOption = useCallback(
+    async (optionId: string, value: unknown) => {
+      if (!session) return;
+      setPrevStats(build?.stats ?? EMPTY_CALC);
+      const stats = await session.setConfigOption(optionId, value);
+      setBuild((current) => (current ? { ...current, stats } : current));
       setConfigOptions(await session.getConfigOptions());
       setCalcExplains(new Map());
     },
@@ -366,7 +397,14 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
       setCalcExplains(new Map());
       setPrevStats(undefined);
     };
-    const save = (format: SaveFormat) => session.save({ format });
+    // §10.9 Save/Export: export the open build, then SEND it somewhere real —
+    // XML to a file, a share code to the clipboard — via the host-injected
+    // deliverSaveResult. Without a deliverer the export result would be discarded,
+    // so the command is a no-op then (the desktop entry always injects one).
+    const save = async (format: SaveFormat) => {
+      const result = await session.save({ format });
+      if (deliverSaveResult) await deliverSaveResult(result);
+    };
 
     // §11.1 "아이템 붙여넣기": read clipboard text, parse it through the session,
     // stage the result in the Items inspector, and switch to the Items tab so the
@@ -432,7 +470,7 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
         run: () => selectTab('calcs'),
       },
     ];
-  }, [session, resolveOpenSource, resolveClipboardText, selectTab]);
+  }, [session, resolveOpenSource, resolveClipboardText, deliverSaveResult, selectTab]);
 
   // The workspace pane is routed by the active tab (DESIGN §10.2): Items renders
   // the §10.4 ItemsPanel, Skills the §10.5 SkillsPanel, Config the §10.8
@@ -453,7 +491,12 @@ export function App({ session, resolveOpenSource, resolveClipboardText }: AppPro
     ) : activeTab === 'skills' ? (
       <SkillsPanel locale={locale} model={skills} />
     ) : activeTab === 'config' ? (
-      <ConfigPanel locale={locale} model={config} onApplyPreset={applyConfigPreset} />
+      <ConfigPanel
+        locale={locale}
+        model={config}
+        onApplyPreset={applyConfigPreset}
+        onChangeOption={applyConfigOption}
+      />
     ) : activeTab === 'calcs' ? (
       <CalcsPanel locale={locale} model={calcs} onExplain={explainStat} />
     ) : activeTab === 'passiveTree' ? (

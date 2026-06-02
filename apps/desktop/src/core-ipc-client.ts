@@ -57,6 +57,7 @@ import type {
 } from '@pob2/schema';
 import type { BuildSummary } from '@pob2/ui';
 import type { BuildClient } from './build-session.js';
+import { strFromU8, strToU8, unzlibSync, zlibSync } from 'fflate';
 
 /**
  * The Tauri `invoke` surface this adapter needs (DESIGN §14.1). Declared
@@ -135,34 +136,48 @@ const tauriInvoke: CoreInvoke = async (command, args) => {
   return invoke(command, args);
 };
 
+/** Encode bytes as base64url (PoB share codes use `-`/`_`, no padding). */
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Decode base64url (PoB share-code alphabet) back to bytes. */
+function base64UrlToBytes(code: string): Uint8Array {
+  const b64 = code.trim().replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 /**
- * Browser-safe default share-code codec for the WebView. Uses the Web
- * Compression Streams API (`deflate` = zlib RFC 1950, the same wrapper Node's
- * `deflateSync`/`inflateSync` produce), so a code emitted by upstream PoB / the
- * Node client decodes here, and a code emitted here decodes there. Loaded lazily
- * so the synchronous {@link ShareCodeCodec} surface stays simple while the actual
- * deflate is the async stream API.
+ * Browser-safe default share-code codec for the WebView (DESIGN §5.1, §6.3). A PoB
+ * share code is `base64url(zlib.deflate(buildXml))`. This uses fflate's SYNCHRONOUS
+ * `zlibSync`/`unzlibSync` (RFC 1950, the same `0x78` zlib wrapper Node's
+ * `deflateSync`/`inflateSync` and upstream PoB produce) so the {@link ShareCodeCodec}
+ * surface stays synchronous and carries no `node:zlib` — it runs in the WebView.
  *
- * NOTE (PROGRESS.md p1/encode-byte-identity): the DECODE path is byte-exact for
- * any valid zlib stream regardless of compression level. The ENCODE path here does
- * not pin a compression level, so an encoded code is a VALID PoB share code but is
- * not guaranteed byte-identical to upstream's `Z_BEST_COMPRESSION` output — same
- * caveat already flagged for the Node encoder.
+ * DECODE inflates any valid zlib stream, so a code from upstream PoB / the Node
+ * client round-trips here. ENCODE pins `level: 9` (`Z_BEST_COMPRESSION`) to match
+ * upstream's compressor — resolving the PROGRESS.md p1/encode-byte-identity caveat
+ * for valid-format round-trips (the per-byte match against a real captured PoB code
+ * remains the gamedata gate).
  */
 export const defaultShareCodeCodec: ShareCodeCodec = {
-  decode(): string {
-    throw new CoreClientError({
-      code: 'UPSTREAM_INCOMPATIBLE',
-      message:
-        'share-code decode requires an async codec; inject a ShareCodeCodec into createIpcCoreClient',
-    });
+  decode(code: string): string {
+    try {
+      return strFromU8(unzlibSync(base64UrlToBytes(code)));
+    } catch (err) {
+      throw new CoreClientError({
+        code: 'BUILD_PARSE_FAILED',
+        message: `share-code decode failed: ${String(err)}`,
+      });
+    }
   },
-  encode(): string {
-    throw new CoreClientError({
-      code: 'UPSTREAM_INCOMPATIBLE',
-      message:
-        'share-code encode requires an async codec; inject a ShareCodeCodec into createIpcCoreClient',
-    });
+  encode(xml: string): string {
+    return bytesToBase64Url(zlibSync(strToU8(xml), { level: 9 }));
   },
 };
 

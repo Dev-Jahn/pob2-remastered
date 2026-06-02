@@ -13,7 +13,7 @@
  * `CoreRequestMap` is complete; their responses and schemas are deferred to later
  * phases.
  */
-import type { BuildId, BuildState, GemInput, Locale } from './build-state.js';
+import type { BuildId, GemInput, Locale } from './build-state.js';
 
 // ----------------------------------------------------------------------------
 // Shared payload fragments
@@ -333,9 +333,21 @@ export interface TreeApplyAllocateRequest {
 // MVP response payloads
 // ----------------------------------------------------------------------------
 
+/**
+ * The lightweight build summary the runner returns from build.load (Overview header
+ * fields). build.load yields this, NOT a full BuildState — the full state round-trips
+ * via build.save and a future build.getState (see the build.load schema note).
+ */
+export interface BuildSummary {
+  className?: string;
+  ascendancyName?: string;
+  level?: number;
+  itemCount?: number;
+}
+
 export interface BuildLoadResponse {
   buildId: BuildId;
-  state: BuildState;
+  summary: BuildSummary;
 }
 
 export interface BuildSaveResponse {

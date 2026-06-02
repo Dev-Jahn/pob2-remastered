@@ -156,14 +156,10 @@ export class CoreClient {
       'build.load',
       { source: xml, format: 'xml' },
       () => ({ xml }),
-      // The runner returns {buildId, summary}; that is NOT the BuildState shape
-      // build.load:response requires, so we pass the runner result straight
-      // through to the assembler below (no response-schema validation here).
+      // The runner returns {buildId, summary} — the build.load:response schema now
+      // matches that (buildId required, summary validated-when-present), so the
+      // result is validated against the contract (no validateResponse bypass).
       (r) => r,
-      // No response-schema validation for build.load (documented gap): a
-      // permissive responseValidate that always passes keeps request validation
-      // and the wire hop intact without fabricating a BuildState.
-      { validateResponse: false },
     )) as { buildId?: unknown; summary?: unknown };
 
     if (!wireResult || typeof wireResult.buildId !== 'string') {
