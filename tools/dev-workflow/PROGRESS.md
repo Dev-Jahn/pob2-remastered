@@ -24,6 +24,15 @@
   **collected live (PoE2DB/poecdn) and BUNDLED into the app + packaging.** Follow-on **DATA/ASSET
   COLLECTION** workstream (after/parallel to Phase 7): live-populate the full dictionary (currently
   committed-ids only) + download icon cache + AssetRef manifest (§9) + wire bundling into release.
+- **DATA/ASSET COLLECTION — status (2026-06-02):**
+  - Live collector domains: keyword, skill (incl. spirit gems→skill), support_gem, **unique** —
+    **dictionary 1835 terms** (was 1337), 0 unpaired. (`bb13006`)
+  - Icon cache + **AssetRef manifest = 1097** (was 573), schema + sha256 integrity green;
+    4 spirit-gem 4k icons absent on CDN (403) → excluded (NO-FALLBACK). (`bb13006`)
+  - **Tauri bundling wired** (`9d7c9aa`): `stage-assets.mjs` (fail-closed integrity → copy →
+    `asset-index.json`), `tauri.conf` `bundle.resources`; verified staging 1097 assets in-tree.
+  - **Gaps (no responsible source, documented in DATA_SOURCES.md):** item base types (no PoE2DB
+    index page), passive notables (concept article only — needs a tree data-endpoint collector).
 - Env: Rust toolchain provisioned (cargo 1.96, user-space `~/.cargo`, reachable in login shell);
   `webkit2gtk-4.1` dev libs already present → Tauri buildable; Playwright chromium present → visual gates live
 - TS solution build now covers the new code: `@pob2/schema` + `@pob2/core-client` are both in

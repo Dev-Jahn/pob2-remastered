@@ -34,6 +34,26 @@ progress; the committed dictionary currently holds only sample terms.)_
   dictionary with source attribution. Rate-limited, cached importer
   (`tools/poe2db-importer`). **Not** bundled wholesale; HTML parser changes must
   fail CI rather than silently degrade (`DESIGN.md` §14.3).
+- **Live collector** (`packages/localization/scripts/collect-live.mjs`): identifies via
+  User-Agent, respects robots (Allow: /), rate-limits (≥1.5 s/page), caches every page.
+  Pairs kr/us cards by PoE2DB slug; a domain that parses 0 cards fails loud.
+  **Collected domains** (1820 paired terms, 0 unpaired):
+  - `keyword` — `/Keywords` (719)
+  - `skill` — `/Skill_Gems` (182) + `/Spirit_Gems` (53; spirit gems are active skill gems
+    that reserve Spirit — `DESIGN.md` §8.3 has no separate `spirit_gem` domain, so they map
+    onto `skill`, verified disjoint from the Skill_Gems slug set)
+  - `support_gem` — `/Support_Gems` (420)
+  - `unique` — `/Unique_item` (446; `uniqueName` + `uniqueTypeLine` base-type spans)
+- **Known collection gaps** (no responsible source — left uncollected rather than faked):
+  - **Item base types** (weapon/armour white bases): PoE2DB exposes **no base-type index**.
+    `/us/Items` lists only consumables (Flasks/Catalysts/Essence/…), and per-class pages
+    (`/us/Quarterstaff` etc.) return empty. Base-type names are partially present as the
+    `uniqueTypeLine` aliases on unique records.
+  - **Passive notables/keystones:** `/us/Passive_skill` is a concept article, not a list.
+    The interactive passive tree (`/us/passive-skill-tree/`) would need a different
+    (data-endpoint) collector.
+  - **4 spirit-gem 4k icons** (Dread Banner, Elemental Invocation, Ghost Dance, Herald of
+    Thunder) are absent on the CDN (persistent 403); their terms ship without a bundled icon.
 
 ## 3. GGG / Path of Exile assets (icons, images)
 
