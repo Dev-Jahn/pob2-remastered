@@ -121,10 +121,11 @@ describe('App skills gem toggle (order-preserving, review P1)', () => {
     fireEvent.click(checkboxes[1]);
 
     await vi.waitFor(() => expect(gemWrites).toHaveLength(1));
-    expect(gemWrites[0].groupId).toBe('g1');
+    const write = gemWrites[0]!;
+    expect(write.groupId).toBe('g1');
     // ORDER preserved (the key property): the gems go out as [Spark, AddedLightning], not reordered.
-    expect(gemWrites[0].gems.map((g) => g.gemId)).toEqual(['Spark', 'AddedLightning']);
+    expect(write.gems.map((g) => g.gemId)).toEqual(['Spark', 'AddedLightning']);
     // Exactly one gem's enabled was flipped off.
-    expect(gemWrites[0].gems.filter((g) => !g.enabled)).toHaveLength(1);
+    expect(write.gems.filter((g) => !g.enabled)).toHaveLength(1);
   });
 });
