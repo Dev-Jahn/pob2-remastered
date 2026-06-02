@@ -14,7 +14,8 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc -b && node scripts/build-dictionary.mjs",
-    "coverage:check": "node scripts/coverage-check.mjs"
+    "coverage:check": "node scripts/coverage-check.mjs",
+    "asset-gate": "node ../../tools/dev-workflow/asset-gate.mjs assets/asset-manifest.json --integrity .cache"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
